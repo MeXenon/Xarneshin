@@ -1,0 +1,3055 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Outbounds</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- React & ReactDOM via CDN -->
+    <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <!-- Babel for inline JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- CodeMirror CSS (Dracula theme) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.9/lib/codemirror.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.9/theme/dracula.css" />
+    <style>
+      body {
+        background: linear-gradient(135deg, #0d1b2a, #1b263b);
+        font-family: 'Inter', sans-serif;
+        overflow-x: hidden;
+      }
+      .glass-effect {
+        background: rgba(27, 38, 59, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(167, 139, 250, 0.3);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      }
+      .neon-hover {
+        transition: all 0.3s ease;
+      }
+      .neon-hover:hover {
+        box-shadow: 0 0 15px rgba(167, 139, 250, 0.7);
+        transform: translateY(-2px);
+      }
+      @keyframes slideDownUp {
+        0% { top: -50px; opacity: 0; }
+        20% { top: 20px; opacity: 1; }
+        80% { top: 20px; opacity: 1; }
+        100% { top: -50px; opacity: 0; }
+      }
+      .notification {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(45deg, #facc15, #fbbf24);
+        color: #1e293b;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        z-index: 50;
+        animation: slideDownUp 5s forwards;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        max-width: 90%;
+        text-align: center;
+      }
+      .menu-icon {
+        width: 20px;
+        height: 20px;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1b263b;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #a78bfa;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #c4b5fd;
+      }
+      @media (max-width: 640px) {
+        #outboundsTable thead {
+          display: none;
+        }
+        #outboundsTable tbody tr {
+          display: block;
+          margin-bottom: 1rem;
+          border-radius: 0.75rem;
+          overflow: hidden;
+        }
+        #outboundsTable tbody td {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.75rem 1rem;
+          border-bottom: 1px solid rgba(167, 139, 250, 0.2);
+        }
+        #outboundsTable tbody td:before {
+          content: attr(data-label);
+          font-weight: 600;
+          color: #a5b4fc;
+          margin-right: 1rem;
+          flex: 1;
+        }
+        #outboundsTable tbody td:last-child {
+          border-bottom: none;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+      }
+      #sidebarOverlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 40;
+      }
+      #sidebarOverlay.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body class="text-gray-200 text-base">
+    <div class="relative">
+      <!-- Sidebar Overlay -->
+      <div id="sidebarOverlay" onclick="closeSidebar()"></div>
+      <!-- Sidebar -->
+      <aside
+        id="sidebar"
+        class="fixed top-0 left-0 h-screen w-64 sm:w-72 transform -translate-x-full glass-effect transition-transform duration-300 ease-in-out z-50"
+      >
+        <div class="flex flex-col h-full py-4 sm:py-6">
+          <div class="flex justify-between items-center mb-6 px-4 sm:px-6">
+            <span class="text-xl sm:text-2xl font-semibold tracking-wide text-cyan-400">
+              Xarneshin
+            </span>
+            <button
+              id="closeSidebarButton"
+              class="text-gray-300 hover:text-cyan-400 text-2xl focus:outline-none sm:hidden"
+              onclick="closeSidebar()"
+            >
+              ×
+            </button>
+          </div>
+          <nav class="flex-1 px-4 sm:px-6 space-y-2 sm:space-y-3">
+            <a
+              href="/node/{{ node_id }}/overview"
+              class="block px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover"
+            >
+              Overview
+            </a>
+            <a
+              href="/node/{{ node_id }}/inbounds"
+              class="block px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover"
+            >
+              Inbounds
+            </a>
+            <a
+              href="/node/{{ node_id }}/outbounds"
+              class="block px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-cyan-400 bg-gray-900/50 neon-hover"
+            >
+              Outbounds
+            </a>
+            <a
+              href="/node/{{ node_id }}/rules"
+              class="block px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover"
+            >
+              Routing Rules
+            </a>
+            <a
+              href="/node/{{ node_id }}/dns"
+              class="block px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover"
+            >
+              DNS
+            </a>
+            <a
+              href="/node/{{ node_id }}/balancers"
+              class="block px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover"
+            >
+              Balancer
+            </a>
+            <a
+              href="/node/{{ node_id }}/reverse"
+              class="block px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover"
+            >
+              Reverse
+            </a>
+            <a
+              href="/node/{{ node_id }}/advance"
+              class="block px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover"
+            >
+              Advance Settings & Editor
+            </a>
+            <a
+              href="/nodes"
+              class="block px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover"
+            >
+              Back to Nodes
+            </a>
+            <div class="relative py-2">
+              <button
+                onclick="toggleSubmenu()"
+                class="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover flex justify-between items-center focus:outline-none"
+              >
+                <span>Support Us</span>
+                <svg
+                  id="submenuArrow"
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 transform transition-transform"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div
+                id="submenuContent"
+                class="hidden mt-2 space-y-2 pl-4 sm:pl-6 text-sm sm:text-base glass-effect rounded-lg py-2"
+              >
+                <a
+                  href="https://t.me/XenonNet"
+                  target="_blank"
+                  class="flex items-center space-x-2 px-2 py-1 rounded-md text-gray-300 hover:text-cyan-400 neon-hover"
+                >
+                  <img
+                    src="https://www.svgrepo.com/download/519656/telegram.svg"
+                    class="menu-icon"
+                    alt="Telegram logo"
+                  />
+                  <span>Join Our Channel (@XenonNet)</span>
+                </a>
+                <a
+                  href="https://github.com/MeXenon"
+                  target="_blank"
+                  class="flex items-center space-x-2 px-2 py-1 rounded-md text-gray-300 hover:text-cyan-400 neon-hover"
+                >
+                  <svg class="menu-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.016-1.49C3.97 14.91 3.4 13.81 3.4 13.81c-.36-.91-.88-1.15-.88-1.15-.72-.49.06-.48.06-.48.8.06 1.22.82 1.22.82.71 1.21 1.87.87 2.33.67.07-.775.28-1.305 .51-1.07-2.67-.303-5.47-1.33-5.47-5.93 0-1.31.468-2.382 1.235-3.222-.123-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.52 11.52 0 016 0c2.29-1.553 3.296-1.23 3.296-1.23.655 1.653.242 2.873.12 3.176.77.84 1.232 1.912 1.232 3.222 0 4.609-2.803 5.624-5.47 5.92.43.372.814 1.102.814 2.222 0 1.606-.015 2.896-.015 3.286 0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                  </svg>
+                  <span>GitHub (MeXenon)</span>
+                </a>
+              </div>
+            </div>
+          </nav>
+          <div class="px-4 sm:px-6 mt-6">
+            <a
+              href="/logout"
+              class="block w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white neon-hover"
+            >
+              Logout
+            </a>
+          </div>
+        </div>
+      </aside>
+      <!-- Main Content -->
+      <div
+        id="mainContent"
+        class="transform transition-all duration-300 ml-0 p-2 sm:p-4 md:p-6 lg:p-8"
+      >
+        <header class="flex items-center py-3 sm:py-4">
+          <button
+            id="hamburgerButton"
+            class="p-2 text-gray-300 hover:text-cyan-400 transition focus:outline-none"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6 sm:h-7 sm:w-7"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <h1 class="text-xl sm:text-2xl md:text-3xl ml-3 sm:ml-4 font-semibold text-gray-100 tracking-wide">
+            Manage Outbounds
+          </h1>
+        </header>
+        <main class="mt-4 sm:mt-6">
+          <div id="root" class="glass-effect p-4 sm:p-6 rounded-xl"></div>
+        </main>
+      </div>
+    </div>
+        <!-- Sidebar Script -->
+        <script>
+          const sidebar = document.getElementById('sidebar');
+          const mainContent = document.getElementById('mainContent');
+          const hamburgerButton = document.getElementById('hamburgerButton');
+          const submenuContent = document.getElementById('submenuContent');
+          const submenuArrow = document.getElementById('submenuArrow');
+          const sidebarOverlay = document.getElementById('sidebarOverlay');
+    
+          let sidebarOpen = false;
+          let submenuOpen = false;
+    
+          hamburgerButton.addEventListener('click', () => {
+            toggleSidebar();
+          });
+    
+          function toggleSidebar() {
+            sidebarOpen = !sidebarOpen;
+            if (sidebarOpen) {
+              sidebar.classList.remove('-translate-x-full');
+              mainContent.classList.add('sm:ml-64', 'md:ml-72');
+              sidebarOverlay.classList.add('active');
+            } else {
+              closeSidebar();
+            }
+          }
+    
+          function closeSidebar() {
+            sidebarOpen = false;
+            sidebar.classList.add('-translate-x-full');
+            mainContent.classList.remove('sm:ml-64', 'md:ml-72');
+            sidebarOverlay.classList.remove('active');
+          }
+    
+          function toggleSubmenu() {
+            submenuOpen = !submenuOpen;
+            if (submenuOpen) {
+              submenuContent.classList.remove('hidden');
+              submenuArrow.classList.add('rotate-180');
+            } else {
+              submenuContent.classList.add('hidden');
+              submenuArrow.classList.remove('rotate-180');
+            }
+          }
+        </script>
+    
+        <!-- Node ID & Outbounds from server -->
+        <script>
+          window.__NODE_ID__ = {{ node_id|tojson }};
+          window.__OUTBOUNDS__ = {{ outbounds|tojson }};
+        </script>
+    
+        <!-- React Code -->
+        <script type="text/babel">
+          const { useState, useEffect, useRef } = React;
+    
+          /*****************************************************************************
+           * 1) Basic Helpers
+           *****************************************************************************/
+          function isEmpty(str) {
+            return !str || !str.trim();
+          }
+          function isWarpOutbound(ob) {
+            return (ob.tag || "").toLowerCase() === "warp";
+          }
+    
+          function Toggle({ value, onChange }) {
+            return (
+              <div
+                onClick={() => onChange(!value)}
+                className={`relative inline-block w-12 h-7 transition-colors duration-200 ease-in-out ${
+                  value ? "bg-cyan-600" : "bg-gray-600"
+                } rounded-full cursor-pointer`}
+              >
+                <span
+                  className={`inline-block w-5 h-5 bg-white rounded-full transform transition-transform duration-200 ease-in-out ${
+                    value ? "translate-x-6" : "translate-x-1"
+                  } mt-1`}
+                />
+              </div>
+            );
+          }
+    
+          /*****************************************************************************
+           * 4) Modal (generic)
+           *****************************************************************************/
+          function Modal({ title, children, onClose, wide = false }) {
+            return (
+              <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50 px-2 sm:px-0">
+                <div className={`glass-effect rounded-xl w-full max-w-full ${wide ? "sm:max-w-3xl" : "sm:max-w-5xl"} max-h-[90vh] overflow-y-auto`}>
+                  <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-700/50">
+                    <h2 className="text-lg sm:text-2xl font-semibold text-cyan-400 tracking-wide">{title}</h2>
+                    <button
+                      onClick={onClose}
+                      className="text-gray-300 hover:text-cyan-400 text-2xl sm:text-3xl transition"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <div className="p-4 sm:p-6">{children}</div>
+                </div>
+              </div>
+            );
+          }
+    
+          /*****************************************************************************
+           * 5) JSON Editor
+           *****************************************************************************/
+          function JsonEditor({ jsonValue, onJsonChange, jsonError }) {
+            const editorRef = useRef(null);
+            const cmInstanceRef = useRef(null);
+    
+            useEffect(() => {
+              if (!editorRef.current) return;
+              if (cmInstanceRef.current) return;
+    
+              const cm = CodeMirror(editorRef.current, {
+                value: jsonValue || "{}",
+                mode: { name: "javascript", json: true },
+                lineNumbers: true,
+                theme: "dracula",
+              });
+              cm.on("change", () => {
+                const rawVal = cm.getValue();
+                onJsonChange(rawVal);
+              });
+              cmInstanceRef.current = cm;
+            }, [editorRef, cmInstanceRef, jsonValue, onJsonChange]);
+    
+            useEffect(() => {
+              if (!cmInstanceRef.current) return;
+              const cm = cmInstanceRef.current;
+              const currentVal = cm.getValue();
+              if (jsonValue !== currentVal) {
+                cm.setValue(jsonValue);
+              }
+            }, [jsonValue]);
+    
+            useEffect(() => {
+              if (cmInstanceRef.current) {
+                cmInstanceRef.current.refresh();
+              }
+            });
+    
+            return (
+              <div>
+                {jsonError && <p className="text-red-400 mb-2">{jsonError}</p>}
+                <div
+                  className="border border-gray-600 h-96 overflow-auto rounded-lg"
+                  ref={editorRef}
+                />
+              </div>
+            );
+          }
+    
+          /*****************************************************************************
+           * 6) OutboundFormModal (Partial - up to parseLinkToOutbound)
+           *****************************************************************************/
+          function OutboundFormModal({ isOpen, onClose, onSave, initialOutbound }) {
+            if (!isOpen) return null;
+    
+            const [outboundObj, setOutboundObj] = useState(null);
+            const [currentTab, setCurrentTab] = useState("form");
+            const [jsonError, setJsonError] = useState("");
+            const [linkInput, setLinkInput] = useState("");
+            const [linkError, setLinkError] = useState("");
+    
+            useEffect(() => {
+              if (isOpen) {
+                const clone = JSON.parse(JSON.stringify(initialOutbound || {}));
+                setOutboundObj(clone);
+                setCurrentTab("form");
+                setJsonError("");
+                setLinkInput("");
+                setLinkError("");
+              }
+            }, [isOpen, initialOutbound]);
+    
+            if (!outboundObj) return null;
+    
+            function handleJsonChange(newRawVal) {
+              try {
+                const parsed = JSON.parse(newRawVal);
+                setOutboundObj(parsed);
+                setJsonError("");
+              } catch (err) {
+                setJsonError("JSON parse error: " + err.message);
+              }
+            }
+            const stringifiedOutbound = JSON.stringify(outboundObj, null, 2);
+    
+            function handleLinkImport() {
+              setLinkError("");
+              if (isEmpty(linkInput)) {
+                setLinkError("Empty link!");
+                return;
+              }
+              const imp = parseLinkToOutbound(linkInput);
+              if (!imp) {
+                setLinkError("Unable to parse or unsupported scheme!");
+                return;
+              }
+              setOutboundObj(imp);
+              setLinkInput("");
+              alert("Link imported successfully!");
+            }
+    
+            function parseLinkToOutbound(str) {
+              if (str.startsWith("vmess://")) return parseVmessLink(str);
+              if (str.startsWith("vless://")) return parseVlessLink(str);
+              if (str.startsWith("trojan://")) return parseTrojanLink(str);
+              if (str.startsWith("ss://")) return parseSsLink(str);
+              return null;
+            }
+            function parseVmessLink(linkStr) {
+          try {
+            const b64 = linkStr.substring(8);
+            const dec = atob(b64);
+            const obj = JSON.parse(dec);
+            const ret = {
+              protocol: "vmess",
+              tag: obj.ps || "imported_vmess",
+              sendThrough: "",
+              settings: {
+                address: obj.add || "",
+                port: typeof obj.port === "number" ? obj.port : 443,
+                id: obj.id || "",
+                security: obj.scy || "auto",
+              },
+              streamSettings: {
+                network: obj.net || "tcp",
+                security: obj.tls === "tls" ? "tls" : "none",
+              },
+            };
+            if (obj.sni && ret.streamSettings.security === "tls") {
+              ret.streamSettings.tlsSettings = {
+                serverName: obj.sni,
+                fingerprint: obj.fp || "chrome",
+                alpn: ["http/1.1", "h2"],
+                allowInsecure: false,
+              };
+            }
+            return ret;
+          } catch {
+            return null;
+          }
+        }
+
+        function parseVlessLink(linkStr) {
+          try {
+            const url = new URL(linkStr);
+            const ret = {
+              protocol: "vless",
+              tag: url.hash ? decodeURIComponent(url.hash.substring(1)) : "imported_vless",
+              sendThrough: "",
+              settings: {
+                address: url.hostname || "",
+                port: url.port ? parseInt(url.port, 10) : 443,
+                id: url.username || "",
+                flow: "",
+              },
+              streamSettings: {
+                network: url.searchParams.get("type") || "tcp",
+                security: url.searchParams.get("security") || "none",
+              },
+            };
+            const flowVal = url.searchParams.get("flow");
+            if (flowVal) {
+              ret.settings.flow = flowVal;
+            }
+            const sec = ret.streamSettings.security;
+            if (sec === "tls") {
+              const sni = url.searchParams.get("sni") || "";
+              const fp = url.searchParams.get("fp") || "chrome";
+              ret.streamSettings.tlsSettings = {
+                serverName: sni,
+                fingerprint: fp,
+                alpn: ["http/1.1", "h2"],
+                allowInsecure: false,
+              };
+            } else if (sec === "reality") {
+              const pbk = url.searchParams.get("pbk") || "";
+              const fp = url.searchParams.get("fp") || "";
+              const sid = url.searchParams.get("sid") || "";
+              const spx = url.searchParams.get("spx") || "/";
+              const sni = url.searchParams.get("sni") || "";
+              ret.streamSettings.realitySettings = {
+                publicKey: pbk,
+                fingerprint: fp,
+                serverName: sni,
+                shortId: sid,
+                spiderX: spx,
+              };
+            }
+            return ret;
+          } catch {
+            return null;
+          }
+        }
+
+        function parseTrojanLink(linkStr) {
+          try {
+            const url = new URL(linkStr);
+            const ret = {
+              protocol: "trojan",
+              tag: url.hash ? decodeURIComponent(url.hash.substring(1)) : "imported_trojan",
+              sendThrough: "",
+              settings: {
+                address: url.hostname || "",
+                port: url.port ? parseInt(url.port, 10) : 443,
+                password: url.username || "",
+              },
+              streamSettings: {
+                network: "tcp",
+                security: "none",
+              },
+            };
+            const sec = url.searchParams.get("security");
+            if (sec === "tls") {
+              ret.streamSettings.security = "tls";
+              const sni = url.searchParams.get("sni") || "";
+              const fp = url.searchParams.get("fp") || "chrome";
+              ret.streamSettings.tlsSettings = {
+                serverName: sni,
+                fingerprint: fp,
+                alpn: ["http/1.1", "h2"],
+                allowInsecure: false,
+              };
+            } else if (sec === "reality") {
+              ret.streamSettings.security = "reality";
+              ret.streamSettings.realitySettings = {
+                publicKey: url.searchParams.get("pbk") || "",
+                fingerprint: url.searchParams.get("fp") || "",
+                serverName: url.searchParams.get("sni") || "",
+                shortId: url.searchParams.get("sid") || "",
+                spiderX: url.searchParams.get("spx") || "/",
+              };
+            }
+            return ret;
+          } catch {
+            return null;
+          }
+        }
+
+        function parseSsLink(linkStr) {
+          try {
+            const rest = linkStr.substring(5);
+            if (rest.includes("@")) {
+              const [cred, server] = rest.split("@");
+              const [method, password] = cred.split(":");
+              const [host, port] = server.split(":");
+              return {
+                protocol: "shadowsocks",
+                tag: "imported_ss",
+                settings: {
+                  address: host,
+                  port: parseInt(port, 10) || 443,
+                  password,
+                  method,
+                },
+              };
+            } else {
+              const dec = atob(rest);
+              const [cred, server] = dec.split("@");
+              const [method, password] = cred.split(":");
+              const [host, port] = server.split(":");
+              return {
+                protocol: "shadowsocks",
+                tag: "imported_ss",
+                settings: {
+                  address: host,
+                  port: parseInt(port, 10) || 443,
+                  password,
+                  method,
+                },
+              };
+            }
+          } catch {
+            return null;
+          }
+        }
+
+        function handleSaveLocal() {
+          onSave(outboundObj);
+        }
+
+        return (
+          <Modal title="Manage Outbound" onClose={onClose} wide={true}>
+            <div className="flex space-x-4 mb-4">
+              <button
+                onClick={() => setCurrentTab("form")}
+                className={`px-4 py-2 rounded-lg text-sm sm:text-base ${
+                  currentTab === "form" ? "bg-cyan-600 text-white" : "bg-gray-700 text-gray-300"
+                } neon-hover`}
+              >
+                Form Editor
+              </button>
+              <button
+                onClick={() => setCurrentTab("json")}
+                className={`px-4 py-2 rounded-lg text-sm sm:text-base ${
+                  currentTab === "json" ? "bg-cyan-600 text-white" : "bg-gray-700 text-gray-300"
+                } neon-hover`}
+              >
+                JSON Editor
+              </button>
+            </div>
+
+            {currentTab === "form" ? (
+              <div className="space-y-6">
+                <div className="glass-effect p-4 rounded-lg">
+                  <label className="block mb-1 font-semibold text-cyan-400">Link Import:</label>
+                  <div className="flex flex-col md:flex-row md:items-center md:space-x-2 space-y-2 md:space-y-0">
+                    <input
+                      type="text"
+                      className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full md:w-80 text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      placeholder="vmess://, vless://, trojan://, ss://"
+                      value={linkInput}
+                      onChange={(e) => setLinkInput(e.target.value)}
+                    />
+                    <button
+                      onClick={handleLinkImport}
+                      className="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded-lg text-sm neon-hover"
+                    >
+                      Import
+                    </button>
+                  </div>
+                  {linkError && <p className="text-red-400 mt-2">{linkError}</p>}
+                </div>
+
+                <BasicSettings outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                {outboundObj.protocol === "freedom" && (
+                  <FreedomSection outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                )}
+                {outboundObj.protocol === "blackhole" && (
+                  <BlackholeSection outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                )}
+                {outboundObj.protocol === "dns" && (
+                  <DnsSection outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                )}
+                {outboundObj.protocol === "vmess" && (
+                  <VmessSection outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                )}
+                {outboundObj.protocol === "vless" && (
+                  <VlessSection outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                )}
+                {outboundObj.protocol === "trojan" && (
+                  <TrojanSection outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                )}
+                {outboundObj.protocol === "shadowsocks" && (
+                  <ShadowsocksSection outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                )}
+                {outboundObj.protocol === "socks" && (
+                  <SocksSection outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                )}
+                {outboundObj.protocol === "http" && (
+                  <HttpSection outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                )}
+                {outboundObj.protocol === "wireguard" && (
+                  <WireguardSection outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+                )}
+              </div>
+            ) : (
+              <JsonEditor
+                jsonValue={stringifiedOutbound}
+                onJsonChange={handleJsonChange}
+                jsonError={jsonError}
+              />
+            )}
+
+            <div className="flex justify-end space-x-4 mt-6">
+              <button
+                onClick={onClose}
+                className="bg-gray-700 hover:bg-gray-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-base neon-hover"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveLocal}
+                className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-base neon-hover"
+              >
+                Save (Local)
+              </button>
+            </div>
+          </Modal>
+        );
+      }
+
+      /*****************************************************************************
+       * 7) Basic Settings
+       *****************************************************************************/
+      function BasicSettings({ outboundObj, setOutboundObj }) {
+        function handleProtocol(e) {
+          setOutboundObj((prev) => ({ ...prev, protocol: e.target.value }));
+        }
+        function handleTag(e) {
+          setOutboundObj((prev) => ({ ...prev, tag: e.target.value }));
+        }
+        function handleSendThrough(e) {
+          setOutboundObj((prev) => ({ ...prev, sendThrough: e.target.value }));
+        }
+
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">Basic Outbound Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Protocol:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={outboundObj.protocol || "freedom"}
+                onChange={handleProtocol}
+              >
+                <option value="freedom">Freedom</option>
+                <option value="blackhole">Blackhole</option>
+                <option value="dns">DNS</option>
+                <option value="vmess">VMess</option>
+                <option value="vless">VLESS</option>
+                <option value="trojan">Trojan</option>
+                <option value="shadowsocks">Shadowsocks</option>
+                <option value="socks">Socks</option>
+                <option value="http">HTTP</option>
+                <option value="wireguard">WireGuard</option>
+              </select>
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Tag:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={outboundObj.tag || ""}
+                onChange={handleTag}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Send Through:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={outboundObj.sendThrough || ""}
+                onChange={handleSendThrough}
+              />
+            </div>
+          </div>
+        );
+      }
+      /*****************************************************************************
+       * Freedom, Blackhole, DNS, VMess, VLESS, Trojan, Shadowsocks, etc.
+       *****************************************************************************/
+       function FreedomSection({ outboundObj, setOutboundObj }) {
+        const settings = outboundObj.settings || {};
+        function handleDomainStrategy(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, domainStrategy: e.target.value },
+          }));
+        }
+        function handleRedirect(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, redirect: e.target.value },
+          }));
+        }
+        const hasFragment = !!settings.fragment;
+        function toggleFragment(val) {
+          const copy = { ...settings };
+          if (!val) {
+            delete copy.fragment;
+          } else {
+            copy.fragment = { packets: "1-3", length: "", interval: "" };
+          }
+          setOutboundObj((prev) => ({ ...prev, settings: copy }));
+        }
+        function handleFragmentField(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              fragment: { ...prev.settings.fragment, [field]: val },
+            },
+          }));
+        }
+        const hasNoises = Array.isArray(settings.noises) && settings.noises.length > 0;
+        function toggleNoises(val) {
+          const copy = { ...settings };
+          if (!val) {
+            delete copy.noises;
+          } else {
+            copy.noises = [
+              { type: "rand", packet: "10-20", delay: "10-16" },
+            ];
+          }
+          setOutboundObj((prev) => ({ ...prev, settings: copy }));
+        }
+
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">Freedom Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Domain Strategy:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={settings.domainStrategy || "AsIs"}
+                onChange={handleDomainStrategy}
+              >
+                <option value="AsIs">AsIs</option>
+                <option value="UseIP">UseIP</option>
+                <option value="UseIPv4">UseIPv4</option>
+                <option value="UseIPv6">UseIPv6</option>
+                <option value="UseIPv6v4">UseIPv6v4</option>
+                <option value="UseIPv4v6">UseIPv4v6</option>
+                <option value="ForceIP">ForceIP</option>
+              </select>
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Redirect:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={settings.redirect || ""}
+                onChange={handleRedirect}
+              />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-gray-300">
+                <span>Fragment:</span>
+                <Toggle value={hasFragment} onChange={toggleFragment} />
+              </label>
+              {hasFragment && (
+                <div className="pl-4 mt-2 space-y-2">
+                  <div>
+                    <label className="block mb-1 text-gray-300">Packets:</label>
+                    <select
+                      className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      value={settings.fragment.packets || "1-3"}
+                      onChange={(e) => handleFragmentField("packets", e.target.value)}
+                    >
+                      <option value="1-3">1-3</option>
+                      <option value="tlshello">tlshello</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-gray-300">Length:</label>
+                    <input
+                      type="text"
+                      className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      value={settings.fragment.length || ""}
+                      onChange={(e) => handleFragmentField("length", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-gray-300">Interval:</label>
+                    <input
+                      type="text"
+                      className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      value={settings.fragment.interval || ""}
+                      onChange={(e) => handleFragmentField("interval", e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-gray-300">
+                <span>Noises:</span>
+                <Toggle value={hasNoises} onChange={toggleNoises} />
+              </label>
+              {hasNoises && (
+                <NoisesArr
+                  noiseArr={settings.noises || []}
+                  setOutboundObj={setOutboundObj}
+                />
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      function NoisesArr({ noiseArr, setOutboundObj }) {
+        function addNoise() {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              noises: [
+                ...(prev.settings.noises || []),
+                { type: "rand", packet: "10-20", delay: "10-16" },
+              ],
+            },
+          }));
+        }
+        function removeNoise(index) {
+          setOutboundObj((prev) => {
+            const arr = [...(prev.settings.noises || [])];
+            arr.splice(index, 1);
+            return { ...prev, settings: { ...prev.settings, noises: arr } };
+          });
+        }
+        function handleChange(index, field, val) {
+          setOutboundObj((prev) => {
+            const arr = [...(prev.settings.noises || [])];
+            arr[index] = { ...arr[index], [field]: val };
+            return { ...prev, settings: { ...prev.settings, noises: arr } };
+          });
+        }
+        return (
+          <div className="pl-4 mt-2 space-y-2">
+            <button
+              onClick={addNoise}
+              className="bg-cyan-600 hover:bg-cyan-700 text-white px-2 py-1 rounded-lg text-sm neon-hover"
+            >
+              Add Noise
+            </button>
+            {noiseArr.map((nz, idx) => (
+              <div key={idx} className="glass-effect p-3 rounded-lg space-y-2 mt-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-cyan-400">Noise #{idx + 1}</span>
+                  <button
+                    onClick={() => removeNoise(idx)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-lg text-sm neon-hover"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-gray-300">Type:</label>
+                  <select
+                    className="bg-gray-900/50 border border-gray-700 rounded-lg p-1 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={nz.type || "rand"}
+                    onChange={(e) => handleChange(idx, "type", e.target.value)}
+                  >
+                    <option value="rand">rand</option>
+                    <option value="base64">base64</option>
+                    <option value="str">str</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-gray-300">Packet:</label>
+                  <input
+                    type="text"
+                    className="bg-gray-900/50 border border-gray-700 rounded-lg p-1 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={nz.packet || "10-20"}
+                    onChange={(e) => handleChange(idx, "packet", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-gray-300">Delay:</label>
+                  <input
+                    type="text"
+                    className="bg-gray-900/50 border border-gray-700 rounded-lg p-1 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={nz.delay || "10-16"}
+                    onChange={(e) => handleChange(idx, "delay", e.target.value)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      function BlackholeSection({ outboundObj, setOutboundObj }) {
+        const settings = outboundObj.settings || {};
+        const responseType = settings.response?.type || "";
+        function handleResponseType(e) {
+          const val = e.target.value;
+          const copy = { ...settings };
+          if (!val) {
+            delete copy.response;
+          } else {
+            copy.response = { type: val };
+          }
+          setOutboundObj((prev) => ({ ...prev, settings: copy }));
+        }
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">Blackhole Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Response Type:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={responseType}
+                onChange={handleResponseType}
+              >
+                <option value="">(none)</option>
+                <option value="none">none</option>
+                <option value="http">http</option>
+              </select>
+            </div>
+          </div>
+        );
+      }
+
+      function DnsSection({ outboundObj, setOutboundObj }) {
+        const s = outboundObj.settings || {};
+        function handleNetwork(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, network: e.target.value },
+          }));
+        }
+        function handleAddress(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, address: e.target.value },
+          }));
+        }
+        function handlePort(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              port: parseInt(e.target.value, 10) || 53,
+            },
+          }));
+        }
+        function handleNonIP(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, nonIPQuery: e.target.value },
+          }));
+        }
+        function handleBlockTypes(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              blockTypes: [parseInt(e.target.value, 10) || 0],
+            },
+          }));
+        }
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">DNS Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Network:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.network || "udp"}
+                onChange={handleNetwork}
+              >
+                <option value="udp">udp</option>
+                <option value="tcp">tcp</option>
+              </select>
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Address:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.address || ""}
+                onChange={handleAddress}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Port:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.port ?? 53}
+                onChange={handlePort}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">nonIPQuery:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.nonIPQuery || "drop"}
+                onChange={handleNonIP}
+              >
+                <option value="drop">drop</option>
+                <option value="skip">skip</option>
+              </select>
+            </div>
+            {s.nonIPQuery === "skip" && (
+              <div>
+                <label className="block mb-1 text-gray-300">Block Types:</label>
+                <input
+                  type="number"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={s.blockTypes?.[0] || 0}
+                  onChange={handleBlockTypes}
+                />
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function VmessSection({ outboundObj, setOutboundObj }) {
+        const s = outboundObj.settings || {};
+        function handleAddress(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, address: e.target.value },
+          }));
+        }
+        function handlePort(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              port: parseInt(e.target.value, 10) || 443,
+            },
+          }));
+        }
+        function handleID(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, id: e.target.value },
+          }));
+        }
+        function handleSecurity(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, security: e.target.value },
+          }));
+        }
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">VMess Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Address:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.address || ""}
+                onChange={handleAddress}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Port:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.port ?? 443}
+                onChange={handlePort}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">ID (UUID):</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.id || ""}
+                onChange={handleID}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Security:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.security || "auto"}
+                onChange={handleSecurity}
+              >
+                <option value="aes-128-gcm">aes-128-gcm</option>
+                <option value="chacha20-poly1305">chacha20-poly1305</option>
+                <option value="auto">auto</option>
+                <option value="none">none</option>
+                <option value="zero">zero</option>
+              </select>
+            </div>
+          </div>
+        );
+      }
+
+      function VlessSection({ outboundObj, setOutboundObj }) {
+        const s = outboundObj.settings || {};
+        const st = outboundObj.streamSettings || {};
+        const canShowFlow =
+          outboundObj.protocol === "vless" &&
+          st.network === "tcp" &&
+          (st.security === "tls" || st.security === "reality");
+
+        function handleAddress(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, address: e.target.value },
+          }));
+        }
+        function handlePort(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              port: parseInt(e.target.value, 10) || 443,
+            },
+          }));
+        }
+        function handleID(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, id: e.target.value },
+          }));
+        }
+        function handleFlow(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, flow: e.target.value },
+          }));
+        }
+
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">VLESS Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Address:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.address || ""}
+                onChange={handleAddress}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Port:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.port ?? 443}
+                onChange={handlePort}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">ID (UUID):</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.id || ""}
+                onChange={handleID}
+              />
+            </div>
+            {canShowFlow && (
+              <div>
+                <label className="block mb-1 text-gray-300">Flow:</label>
+                <select
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={s.flow || ""}
+                  onChange={handleFlow}
+                >
+                  <option value="">(none)</option>
+                  <option value="xtls-rprx-vision">xtls-rprx-vision</option>
+                  <option value="xtls-rprx-vision-udp443">xtls-rprx-vision-udp443</option>
+                </select>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function TrojanSection({ outboundObj, setOutboundObj }) {
+        const s = outboundObj.settings || {};
+        function handleAddress(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, address: e.target.value },
+          }));
+        }
+        function handlePort(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              port: parseInt(e.target.value, 10) || 443,
+            },
+          }));
+        }
+        function handlePassword(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, password: e.target.value },
+          }));
+        }
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">Trojan Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Address:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.address || ""}
+                onChange={handleAddress}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Port:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.port ?? 443}
+                onChange={handlePort}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Password:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.password || ""}
+                onChange={handlePassword}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function ShadowsocksSection({ outboundObj, setOutboundObj }) {
+        const s = outboundObj.settings || {};
+        function handleAddress(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, address: e.target.value },
+          }));
+        }
+        function handlePort(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              port: parseInt(e.target.value, 10) || 443,
+            },
+          }));
+        }
+        function handlePassword(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, password: e.target.value },
+          }));
+        }
+        function handleMethod(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, method: e.target.value },
+          }));
+        }
+        function handleUot(val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, uot: val },
+          }));
+        }
+        function handleUotVersion(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              UoTVersion: parseInt(e.target.value, 10) || 1,
+            },
+          }));
+        }
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">Shadowsocks Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Address:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.address || ""}
+                onChange={handleAddress}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Port:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.port ?? 443}
+                onChange={handlePort}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Password:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.password || ""}
+                onChange={handlePassword}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Encryption:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.method || "aes-256-gcm"}
+                onChange={handleMethod}
+              >
+                <option value="aes-256-gcm">aes-256-gcm</option>
+                <option value="aes-128-gcm">aes-128-gcm</option>
+                <option value="chacha20-poly1305">chacha20-poly1305</option>
+                <option value="chacha20-ietf-poly1305">chacha20-ietf-poly1305</option>
+                <option value="xchacha20-poly1305">xchacha20-poly1305</option>
+                <option value="xchacha20-ietf-poly1305">xchacha20-ietf-poly1305</option>
+                <option value="2022-blake3-aes-128-gcm">2022-blake3-aes-128-gcm</option>
+                <option value="2022-blake3-aes-256-gcm">2022-blake3-aes-256-gcm</option>
+                <option value="2022-blake3-chacha20-poly1305">
+                  2022-blake3-chacha20-poly1305
+                </option>
+                <option value="none">none</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-300">UDP over TCP (uot):</label>
+              <Toggle value={!!s.uot} onChange={handleUot} />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">UoTVersion:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.UoTVersion ?? 1}
+                onChange={handleUotVersion}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function SocksSection({ outboundObj, setOutboundObj }) {
+        const s = outboundObj.settings || {};
+        function handleAddress(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, address: e.target.value },
+          }));
+        }
+        function handlePort(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              port: parseInt(e.target.value, 10) || 1080,
+            },
+          }));
+        }
+        function handleUser(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, user: e.target.value },
+          }));
+        }
+        function handlePass(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, pass: e.target.value },
+          }));
+        }
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">Socks Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Address:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.address || ""}
+                onChange={handleAddress}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Port:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.port ?? 1080}
+                onChange={handlePort}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Username:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.user || ""}
+                onChange={handleUser}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Password:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.pass || ""}
+                onChange={handlePass}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function HttpSection({ outboundObj, setOutboundObj }) {
+        const s = outboundObj.settings || {};
+        function handleAddress(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, address: e.target.value },
+          }));
+        }
+        function handlePort(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              port: parseInt(e.target.value, 10) || 80,
+            },
+          }));
+        }
+        function handleUser(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, user: e.target.value },
+          }));
+        }
+        function handlePass(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, pass: e.target.value },
+          }));
+        }
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">HTTP Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Address:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.address || ""}
+                onChange={handleAddress}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Port:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.port ?? 80}
+                onChange={handlePort}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Username:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.user || ""}
+                onChange={handleUser}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Password:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.pass || ""}
+                onChange={handlePass}
+              />
+            </div>
+          </div>
+        );
+      }
+      function WireguardSection({ outboundObj, setOutboundObj }) {
+        const s = outboundObj.settings || {};
+        function handleField(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: { ...prev.settings, [field]: val },
+          }));
+        }
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">WireGuard Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Address:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.address || ""}
+                onChange={(e) => handleField("address", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Secret Key:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.secretKey || ""}
+                onChange={(e) => handleField("secretKey", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Public Key:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.publicKey || ""}
+                onChange={(e) => handleField("publicKey", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Domain Strategy:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.domainStrategy || ""}
+                onChange={(e) => handleField("domainStrategy", e.target.value)}
+              >
+                <option value="">(none)</option>
+                <option value="ForceIP">ForceIP</option>
+                <option value="ForceIPv4">ForceIPv4</option>
+                <option value="ForceIPv4v6">ForceIPv4v6</option>
+                <option value="ForceIPv6">ForceIPv6</option>
+                <option value="ForceIPv6v4">ForceIPv6v4</option>
+              </select>
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">MTU:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.mtu ?? 1420}
+                onChange={(e) =>
+                  handleField("mtu", parseInt(e.target.value, 10) || 1420)
+                }
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Workers:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.workers ?? 2}
+                onChange={(e) =>
+                  handleField("workers", parseInt(e.target.value, 10) || 2)
+                }
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-300">No Kernel Tun:</label>
+              <Toggle
+                value={!!s.noKernelTun}
+                onChange={(val) => handleField("noKernelTun", val)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Reserved:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={s.reserved || ""}
+                onChange={(e) => handleField("reserved", e.target.value)}
+              />
+            </div>
+            <WireguardPeers outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+          </div>
+        );
+      }
+
+      function WireguardPeers({ outboundObj, setOutboundObj }) {
+        const peers = outboundObj.settings?.peers || [];
+        function addPeer() {
+          setOutboundObj((prev) => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              peers: [
+                ...(prev.settings.peers || []),
+                {
+                  publicKey: "",
+                  psk: "",
+                  allowedIPs: ["0.0.0.0/0", "::/0"],
+                  endpoint: "",
+                  keepAlive: 0,
+                },
+              ],
+            },
+          }));
+        }
+        function removePeer(idx) {
+          setOutboundObj((prev) => {
+            const arr = [...(prev.settings.peers || [])];
+            arr.splice(idx, 1);
+            return { ...prev, settings: { ...prev.settings, peers: arr } };
+          });
+        }
+        return (
+          <div className="space-y-4 mt-4">
+            <div className="flex items-center justify-between">
+              <label className="block font-semibold text-cyan-400">Peers:</label>
+              <button
+                onClick={addPeer}
+                className="bg-cyan-600 hover:bg-cyan-700 text-white px-2 py-1 rounded-lg text-sm neon-hover"
+              >
+                Add Peer
+              </button>
+            </div>
+            {peers.map((peer, idx) => (
+              <WireguardPeerItem
+                key={idx}
+                index={idx}
+                peerData={peer}
+                outboundObj={outboundObj}
+                setOutboundObj={setOutboundObj}
+                onRemove={() => removePeer(idx)}
+              />
+            ))}
+          </div>
+        );
+      }
+
+      function WireguardPeerItem({ index, peerData, outboundObj, setOutboundObj, onRemove }) {
+        function handlePeerField(field, val) {
+          setOutboundObj((prev) => {
+            const arr = [...(prev.settings.peers || [])];
+            arr[index] = { ...arr[index], [field]: val };
+            return { ...prev, settings: { ...prev.settings, peers: arr } };
+          });
+        }
+        function addAllowedIp() {
+          setOutboundObj((prev) => {
+            const arr = [...(prev.settings.peers || [])];
+            arr[index] = {
+              ...arr[index],
+              allowedIPs: [...(arr[index].allowedIPs || []), ""],
+            };
+            return { ...prev, settings: { ...prev.settings, peers: arr } };
+          });
+        }
+        function removeAllowedIp(ipIdx) {
+          setOutboundObj((prev) => {
+            const arr = [...(prev.settings.peers || [])];
+            const ips = [...arr[index].allowedIPs];
+            ips.splice(ipIdx, 1);
+            arr[index].allowedIPs = ips;
+            return { ...prev, settings: { ...prev.settings, peers: arr } };
+          });
+        }
+        function updateAllowedIp(ipIdx, val) {
+          setOutboundObj((prev) => {
+            const arr = [...(prev.settings.peers || [])];
+            const ips = [...arr[index].allowedIPs];
+            ips[ipIdx] = val;
+            arr[index].allowedIPs = ips;
+            return { ...prev, settings: { ...prev.settings, peers: arr } };
+          });
+        }
+        return (
+          <div className="glass-effect p-3 rounded-lg">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-semibold text-cyan-400">Peer #{index + 1}</span>
+              <button
+                onClick={onRemove}
+                className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-lg text-sm neon-hover"
+              >
+                Delete Peer
+              </button>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <label className="block mb-1 text-gray-300">Endpoint:</label>
+                <input
+                  type="text"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-1 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={peerData.endpoint || ""}
+                  onChange={(e) => handlePeerField("endpoint", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-gray-300">PublicKey:</label>
+                <input
+                  type="text"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-1 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={peerData.publicKey || ""}
+                  onChange={(e) => handlePeerField("publicKey", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-gray-300">PSK:</label>
+                <input
+                  type="text"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-1 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={peerData.psk || ""}
+                  onChange={(e) => handlePeerField("psk", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-gray-300">KeepAlive:</label>
+                <input
+                  type="number"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-1 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={peerData.keepAlive ?? 0}
+                  onChange={(e) =>
+                    handlePeerField("keepAlive", parseInt(e.target.value, 10) || 0)
+                  }
+                />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-sm text-cyan-400">AllowedIPs:</span>
+                <button
+                  onClick={addAllowedIp}
+                  className="bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded-lg text-sm neon-hover"
+                >
+                  + Add
+                </button>
+              </div>
+              {peerData.allowedIPs?.map((ip, ipIdx) => (
+                <div key={ipIdx} className="flex items-center gap-2 mb-1">
+                  <input
+                    type="text"
+                    className="bg-gray-900/50 border border-gray-700 rounded-lg p-1 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={ip}
+                    onChange={(e) => updateAllowedIp(ipIdx, e.target.value)}
+                  />
+                  <button
+                    onClick={() => removeAllowedIp(ipIdx)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded-lg text-sm neon-hover"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      /*****************************************************************************
+       * 9) Sockopt Section
+       *****************************************************************************/
+      function SockoptSection({ outboundObj, setOutboundObj }) {
+        const so = outboundObj.sockopt;
+        const isEnabled = !!so;
+        function toggleSockopt(val) {
+          if (!val) {
+            const copy = { ...outboundObj };
+            delete copy.sockopt;
+            setOutboundObj(copy);
+          } else {
+            setOutboundObj((prev) => ({
+              ...prev,
+              sockopt: {
+                dialerProxy: "",
+                tcpFastOpen: false,
+                tcpKeepAliveInterval: 0,
+                tcpMptcp: false,
+                penetrate: false,
+              },
+            }));
+          }
+        }
+        function handleChange(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            sockopt: { ...prev.sockopt, [field]: val },
+          }));
+        }
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">Sockopt Settings</h4>
+            <label className="flex items-center gap-2 text-gray-300">
+              <span>Enable Sockopt:</span>
+              <Toggle value={isEnabled} onChange={toggleSockopt} />
+            </label>
+            {isEnabled && (
+              <div className="space-y-4 pl-4">
+                <div>
+                  <label className="block mb-1 text-gray-300">Dialer Proxy:</label>
+                  <input
+                    type="text"
+                    className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={so.dialerProxy || ""}
+                    onChange={(e) => handleChange("dialerProxy", e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-gray-300">TCP Fast Open:</label>
+                  <Toggle
+                    value={!!so.tcpFastOpen}
+                    onChange={(val) => handleChange("tcpFastOpen", val)}
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-gray-300">Keep Alive Interval:</label>
+                  <input
+                    type="number"
+                    className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={so.tcpKeepAliveInterval ?? 0}
+                    onChange={(e) =>
+                      handleChange("tcpKeepAliveInterval", parseInt(e.target.value, 10) || 0)
+                    }
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-gray-300">Multipath TCP:</label>
+                  <Toggle
+                    value={!!so.tcpMptcp}
+                    onChange={(val) => handleChange("tcpMptcp", val)}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-gray-300">Penetrate:</label>
+                  <Toggle
+                    value={!!so.penetrate}
+                    onChange={(val) => handleChange("penetrate", val)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      /*****************************************************************************
+       * 10) StreamSettings
+       *****************************************************************************/
+      function StreamSettings({ outboundObj, setOutboundObj }) {
+        const st = outboundObj.streamSettings || { network: "tcp", security: "none" };
+        function handleNetwork(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              network: e.target.value,
+            },
+          }));
+        }
+        function handleSecurity(e) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              security: e.target.value,
+            },
+          }));
+        }
+        const network = st.network || "tcp";
+        const security = st.security || "none";
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">Stream Settings</h4>
+            <div>
+              <label className="block mb-1 text-gray-300">Network:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={network}
+                onChange={handleNetwork}
+              >
+                <option value="tcp">tcp</option>
+                <option value="kcp">kcp</option>
+                <option value="ws">ws</option>
+                <option value="grpc">grpc</option>
+                <option value="httpupgrade">httpupgrade</option>
+                <option value="xhttp">xhttp</option>
+              </select>
+            </div>
+            {network === "tcp" && (
+              <TcpSettings outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+            )}
+            {network === "kcp" && (
+              <KcpSettings outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+            )}
+            {network === "ws" && (
+              <WsSettings outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+            )}
+            {network === "grpc" && (
+              <GrpcSettings outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+            )}
+            {network === "httpupgrade" && (
+              <HttpUpgradeSettings outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+            )}
+            {network === "xhttp" && (
+              <XhttpSettings outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+            )}
+            <div>
+              <label className="block mb-1 text-gray-300">Security:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={security}
+                onChange={handleSecurity}
+              >
+                <option value="none">none</option>
+                <option value="tls">tls</option>
+                <option value="reality">reality</option>
+              </select>
+            </div>
+            {security === "tls" && (
+              <TlsSettings outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+            )}
+            {security === "reality" && (
+              <RealitySettings outboundObj={outboundObj} setOutboundObj={setOutboundObj} />
+            )}
+          </div>
+        );
+      }
+
+      function TcpSettings({ outboundObj, setOutboundObj }) {
+        const st = outboundObj.streamSettings || {};
+        const tcp = st.tcpSettings || { header: { type: "none" } };
+        function setTcpSettings(newTcp) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: { ...prev.streamSettings, tcpSettings: newTcp },
+          }));
+        }
+        const isHttp = tcp.header?.type === "http";
+        function toggleHttp(val) {
+          if (!val) {
+            setTcpSettings({ header: { type: "none" } });
+          } else {
+            setTcpSettings({
+              header: {
+                type: "http",
+                request: {
+                  headers: { Host: ["example.com"] },
+                  path: ["/"],
+                },
+              },
+            });
+          }
+        }
+        return (
+          <div className="glass-effect p-3 rounded-lg space-y-2 mt-2">
+            <h5 className="font-semibold text-cyan-400">TCP Settings</h5>
+            <label className="flex items-center gap-2 text-gray-300">
+              <span>HTTP Obfuscation:</span>
+              <Toggle value={isHttp} onChange={toggleHttp} />
+            </label>
+            {isHttp && (
+              <TcpHttpFields
+                outboundObj={outboundObj}
+                setOutboundObj={setOutboundObj}
+                tcpSettings={tcp}
+              />
+            )}
+          </div>
+        );
+      }
+      function TcpHttpFields({ outboundObj, setOutboundObj, tcpSettings }) {
+        const header = tcpSettings.header || {};
+        const request = header.request || { headers: { Host: [] }, path: ["/"] };
+        function setTcpSettings(newTcp) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              tcpSettings: newTcp,
+            },
+          }));
+        }
+        function handleHost(e) {
+          const arr = e.target.value ? e.target.value.split(",") : [];
+          setTcpSettings({
+            header: {
+              ...header,
+              type: "http",
+              request: {
+                ...request,
+                headers: { Host: arr },
+              },
+            },
+          });
+        }
+        function handlePath(e) {
+          const arr = e.target.value ? e.target.value.split(",") : ["/"];
+          setTcpSettings({
+            header: {
+              ...header,
+              type: "http",
+              request: {
+                ...request,
+                path: arr,
+              },
+            },
+          });
+        }
+        const hostVal = request.headers?.Host.join(",") || "";
+        const pathVal = (request.path || []).join(",");
+        return (
+          <div className="space-y-2 pl-4">
+            <div>
+              <label className="block mb-1 text-gray-300">Host (comma-separated):</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={hostVal}
+                onChange={handleHost}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Path (comma-separated):</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={pathVal}
+                onChange={handlePath}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function KcpSettings({ outboundObj, setOutboundObj }) {
+        const st = outboundObj.streamSettings || {};
+        const kcp = st.kcpSettings || {
+          mtu: 1280,
+          tti: 50,
+          uplinkCapacity: 5,
+          downlinkCapacity: 20,
+          congestion: false,
+          readBufferSize: 2,
+          writeBufferSize: 2,
+          header: { type: "none" },
+          seed: "",
+        };
+        function setKcp(newVal) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              kcpSettings: newVal,
+            },
+          }));
+        }
+        function handleField(field, val) {
+          setKcp({ ...kcp, [field]: val });
+        }
+        function handleHeaderType(e) {
+          setKcp({ ...kcp, header: { type: e.target.value } });
+        }
+        function toggleCongestion(val) {
+          setKcp({ ...kcp, congestion: val });
+        }
+        return (
+          <div className="glass-effect p-3 rounded-lg space-y-2 mt-2">
+            <h5 className="font-semibold text-cyan-400">KCP Settings</h5>
+            <div>
+              <label className="block mb-1 text-gray-300">Header Obfuscation:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={kcp.header?.type || "none"}
+                onChange={handleHeaderType}
+              >
+                <option value="none">(none)</option>
+                <option value="wechat-video">wechat-video</option>
+                <option value="dtls">dtls</option>
+              </select>
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Password (seed):</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={kcp.seed || ""}
+                onChange={(e) => handleField("seed", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">MTU:</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={kcp.mtu || 1280}
+                onChange={(e) => handleField("mtu", parseInt(e.target.value, 10) || 1280)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">TTI (ms):</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={kcp.tti || 50}
+                onChange={(e) => handleField("tti", parseInt(e.target.value, 10) || 50)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Uplink (MB/s):</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={kcp.uplinkCapacity || 5}
+                onChange={(e) =>
+                  handleField("uplinkCapacity", parseInt(e.target.value, 10) || 5)
+                }
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Downlink (MB/s):</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={kcp.downlinkCapacity || 20}
+                onChange={(e) =>
+                  handleField("downlinkCapacity", parseInt(e.target.value, 10) || 20)
+                }
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-300">Congestion:</label>
+              <Toggle value={kcp.congestion} onChange={toggleCongestion} />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Read Buffer (MB):</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={kcp.readBufferSize || 2}
+                onChange={(e) =>
+                  handleField("readBufferSize", parseInt(e.target.value, 10) || 2)
+                }
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Write Buffer (MB):</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={kcp.writeBufferSize || 2}
+                onChange={(e) =>
+                  handleField("writeBufferSize", parseInt(e.target.value, 10) || 2)
+                }
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function WsSettings({ outboundObj, setOutboundObj }) {
+        const st = outboundObj.streamSettings || {};
+        const ws = st.wsSettings || { path: "/", host: "", heartbeatPeriod: 0 };
+        function handleField(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              wsSettings: {
+                ...prev.streamSettings.wsSettings,
+                [field]: val,
+              },
+            },
+          }));
+        }
+        return (
+          <div className="glass-effect p-3 rounded-lg space-y-2 mt-2">
+            <h5 className="font-semibold text-cyan-400">WebSocket Settings</h5>
+            <div>
+              <label className="block mb-1 text-gray-300">Path:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={ws.path}
+                onChange={(e) => handleField("path", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Host:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={ws.host}
+                onChange={(e) => handleField("host", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Heartbeat Period (s):</label>
+              <input
+                type="number"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={ws.heartbeatPeriod || 0}
+                onChange={(e) =>
+                  handleField("heartbeatPeriod", parseInt(e.target.value, 10) || 0)
+                }
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function GrpcSettings({ outboundObj, setOutboundObj }) {
+        const st = outboundObj.streamSettings || {};
+        const grpc = st.grpcSettings || {
+          serviceName: "",
+          authority: "",
+          multiMode: false,
+        };
+        function handleField(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              grpcSettings: { ...prev.streamSettings.grpcSettings, [field]: val },
+            },
+          }));
+        }
+        return (
+          <div className="glass-effect p-3 rounded-lg space-y-2 mt-2">
+            <h5 className="font-semibold text-cyan-400">gRPC Settings</h5>
+            <div>
+              <label className="block mb-1 text-gray-300">Service Name:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={grpc.serviceName}
+                onChange={(e) => handleField("serviceName", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Authority:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={grpc.authority}
+                onChange={(e) => handleField("authority", e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-300">Multi Mode:</label>
+              <Toggle
+                value={grpc.multiMode}
+                onChange={(val) => handleField("multiMode", val)}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function HttpUpgradeSettings({ outboundObj, setOutboundObj }) {
+        const st = outboundObj.streamSettings || {};
+        const httpu = st.httpupgradeSettings || { path: "/", host: "" };
+        function handleField(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              httpupgradeSettings: {
+                ...prev.streamSettings.httpupgradeSettings,
+                [field]: val,
+              },
+            },
+          }));
+        }
+        return (
+          <div className="glass-effect p-3 rounded-lg space-y-2 mt-2">
+            <h5 className="font-semibold text-cyan-400">HTTPUpgrade Settings</h5>
+            <div>
+              <label className="block mb-1 text-gray-300">Path:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={httpu.path}
+                onChange={(e) => handleField("path", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Host:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={httpu.host}
+                onChange={(e) => handleField("host", e.target.value)}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function XhttpSettings({ outboundObj, setOutboundObj }) {
+        const st = outboundObj.streamSettings || {};
+        const xhttp = st.xhttpSettings || {
+          path: "/",
+          host: "",
+          mode: "auto",
+          noGRPCHeader: false,
+          scMinPostsIntervalMs: "30",
+          xmux: {
+            maxConcurrency: "16-32",
+            maxConnections: 0,
+            cMaxReuseTimes: 0,
+            hMaxRequestTimes: "600-900",
+            hMaxReusableSecs: "1800-3000",
+            hKeepAlivePeriod: 0,
+          },
+        };
+        function handleXhttpField(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              xhttpSettings: {
+                ...prev.streamSettings.xhttpSettings,
+                [field]: val,
+              },
+            },
+          }));
+        }
+        function handleXmuxField(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              xhttpSettings: {
+                ...prev.streamSettings.xhttpSettings,
+                xmux: {
+                  ...prev.streamSettings.xhttpSettings.xmux,
+                  [field]: val,
+                },
+              },
+            },
+          }));
+        }
+        return (
+          <div className="glass-effect p-3 rounded-lg space-y-2 mt-2">
+            <h5 className="font-semibold text-cyan-400">xHTTP Settings</h5>
+            <div>
+              <label className="block mb-1 text-gray-300">Path:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={xhttp.path}
+                onChange={(e) => handleXhttpField("path", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Host:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={xhttp.host}
+                onChange={(e) => handleXhttpField("host", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Mode:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={xhttp.mode}
+                onChange={(e) => handleXhttpField("mode", e.target.value)}
+              >
+                <option value="auto">auto</option>
+                <option value="packet-up">packet-up</option>
+                <option value="stream-up">stream-up</option>
+                <option value="stream-one">stream-one</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-300">noGRPCHeader:</label>
+              <Toggle
+                value={xhttp.noGRPCHeader}
+                onChange={(val) => handleXhttpField("noGRPCHeader", val)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">scMinPostsIntervalMs:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={xhttp.scMinPostsIntervalMs}
+                onChange={(e) => handleXhttpField("scMinPostsIntervalMs", e.target.value)}
+              />
+            </div>
+            <div className="glass-effect p-2 rounded-lg space-y-2">
+              <h6 className="font-semibold text-cyan-400">xmux:</h6>
+              <div>
+                <label className="block mb-1 text-gray-300">maxConcurrency:</label>
+                <input
+                  type="text"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={xhttp.xmux.maxConcurrency}
+                  onChange={(e) => handleXmuxField("maxConcurrency", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-gray-300">maxConnections:</label>
+                <input
+                  type="number"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={xhttp.xmux.maxConnections}
+                  onChange={(e) =>
+                    handleXmuxField("maxConnections", parseInt(e.target.value, 10) || 0)
+                  }
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-gray-300">cMaxReuseTimes:</label>
+                <input
+                  type="number"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={xhttp.xmux.cMaxReuseTimes}
+                  onChange={(e) =>
+                    handleXmuxField("cMaxReuseTimes", parseInt(e.target.value, 10) || 0)
+                  }
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-gray-300">hMaxRequestTimes:</label>
+                <input
+                  type="text"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={xhttp.xmux.hMaxRequestTimes}
+                  onChange={(e) => handleXmuxField("hMaxRequestTimes", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-gray-300">hMaxReusableSecs:</label>
+                <input
+                  type="text"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={xhttp.xmux.hMaxReusableSecs}
+                  onChange={(e) => handleXmuxField("hMaxReusableSecs", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-gray-300">hKeepAlivePeriod:</label>
+                <input
+                  type="number"
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  value={xhttp.xmux.hKeepAlivePeriod}
+                  onChange={(e) =>
+                    handleXmuxField("hKeepAlivePeriod", parseInt(e.target.value, 10) || 0)
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      function TlsSettings({ outboundObj, setOutboundObj }) {
+        const st = outboundObj.streamSettings || {};
+        const tls = st.tlsSettings || {
+          serverName: "",
+          fingerprint: "chrome",
+          alpn: ["http/1.1", "h2"],
+          allowInsecure: false,
+        };
+        function handleField(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              tlsSettings: { ...prev.streamSettings.tlsSettings, [field]: val },
+            },
+          }));
+        }
+        const alpnArr = Array.isArray(tls.alpn) ? tls.alpn : [];
+        function handleAlpn(e) {
+          const arr = e.target.value ? e.target.value.split(",") : [];
+          handleField("alpn", arr);
+        }
+        return (
+          <div className="glass-effect p-3 rounded-lg space-y-2 mt-2">
+            <h5 className="font-semibold text-cyan-400">TLS Settings</h5>
+            <div>
+              <label className="block mb-1 text-gray-300">SNI (serverName):</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={tls.serverName}
+                onChange={(e) => handleField("serverName", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Fingerprint:</label>
+              <select
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={tls.fingerprint}
+                onChange={(e) => handleField("fingerprint", e.target.value)}
+              >
+                <option value="chrome">chrome</option>
+                <option value="firefox">firefox</option>
+                <option value="safari">safari</option>
+                <option value="ios">ios</option>
+                <option value="android">android</option>
+                <option value="edge">edge</option>
+                <option value="360">360</option>
+                <option value="qq">qq</option>
+                <option value="random">random</option>
+                <option value="randomized">randomized</option>
+              </select>
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">ALPN (comma-separated):</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={alpnArr.join(",")}
+                onChange={handleAlpn}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-300">Allow Insecure:</label>
+              <Toggle
+                value={tls.allowInsecure}
+                onChange={(val) => handleField("allowInsecure", val)}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function RealitySettings({ outboundObj, setOutboundObj }) {
+        const st = outboundObj.streamSettings || {};
+        const reality = st.realitySettings || {
+          publicKey: "",
+          fingerprint: "",
+          serverName: "",
+          shortId: "",
+          spiderX: "/",
+        };
+        function handleField(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            streamSettings: {
+              ...prev.streamSettings,
+              realitySettings: {
+                ...prev.streamSettings.realitySettings,
+                [field]: val,
+              },
+            },
+          }));
+        }
+        return (
+          <div className="glass-effect p-3 rounded-lg space-y-2 mt-2">
+            <h5 className="font-semibold text-cyan-400">Reality Settings</h5>
+            <div>
+              <label className="block mb-1 text-gray-300">Public Key:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={reality.publicKey}
+                onChange={(e) => handleField("publicKey", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Fingerprint:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={reality.fingerprint}
+                onChange={(e) => handleField("fingerprint", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">SNI (serverName):</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={reality.serverName}
+                onChange={(e) => handleField("serverName", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Short ID:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={reality.shortId}
+                onChange={(e) => handleField("shortId", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">SpiderX:</label>
+              <input
+                type="text"
+                className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                value={reality.spiderX}
+                onChange={(e) => handleField("spiderX", e.target.value)}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      /*****************************************************************************
+       * 11) Mux
+       *****************************************************************************/
+      function MuxSection({ outboundObj, setOutboundObj }) {
+        const mux = outboundObj.mux || {};
+        const isEnabled = !!mux.enabled;
+        function toggleMux(val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            mux: { ...(prev.mux || {}), enabled: val },
+          }));
+        }
+        function handleChange(field, val) {
+          setOutboundObj((prev) => ({
+            ...prev,
+            mux: { ...(prev.mux || {}), [field]: val },
+          }));
+        }
+        return (
+          <div className="glass-effect p-4 rounded-lg space-y-4">
+            <h4 className="text-lg font-semibold text-cyan-400 tracking-wide">MUX Settings</h4>
+            <label className="flex items-center gap-2 text-gray-300">
+              <span>Enabled:</span>
+              <Toggle value={isEnabled} onChange={toggleMux} />
+            </label>
+            {isEnabled && (
+              <div className="space-y-4 pl-4">
+                <div>
+                  <label className="block mb-1 text-gray-300">Concurrency:</label>
+                  <input
+                    type="number"
+                    className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={mux.concurrency ?? 8}
+                    onChange={(e) =>
+                      handleChange("concurrency", parseInt(e.target.value, 10) || 8)
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-gray-300">xUDP Concurrency:</label>
+                  <input
+                    type="number"
+                    className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={mux.xudpConcurrency ?? 16}
+                    onChange={(e) =>
+                      handleChange("xudpConcurrency", parseInt(e.target.value, 10) || 16)
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-gray-300">xUDP Proxy UDP 443:</label>
+                  <select
+                    className="bg-gray-900/50 border border-gray-700 rounded-lg p-2 w-full text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={mux.xudpProxyUDP443 || "reject"}
+                    onChange={(e) => handleChange("xudpProxyUDP443", e.target.value)}
+                  >
+                    <option value="reject">reject</option>
+                    <option value="allow">allow</option>
+                    <option value="skip">skip</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      /*****************************************************************************
+       * 12) Main Page: ManageOutboundsPage
+       *****************************************************************************/
+      function ManageOutboundsPage({ nodeId, initialOutbounds = [] }) {
+        const [outbounds, setOutbounds] = useState([]);
+        const [modalOpen, setModalOpen] = useState(false);
+        const [editingOutbound, setEditingOutbound] = useState(null);
+        const [isSavingAll, setIsSavingAll] = useState(false);
+
+        useEffect(() => {
+          setOutbounds(initialOutbounds);
+        }, [initialOutbounds]);
+
+        function handleOpenModal(outbound = null) {
+          if (!outbound) {
+            outbound = {
+              protocol: "freedom",
+              tag: "",
+              sendThrough: "",
+              settings: {},
+            };
+          }
+          setEditingOutbound(outbound);
+          setModalOpen(true);
+        }
+
+        function handleCloseModal() {
+          setModalOpen(false);
+          setEditingOutbound(null);
+        }
+
+        function handleSaveOutbound(updated) {
+          const oldTag = editingOutbound?.tag;
+          if (oldTag) {
+            setOutbounds((prev) =>
+              prev.map((ob) => (ob.tag === oldTag ? updated : ob))
+            );
+          } else {
+            setOutbounds((prev) => [...prev, updated]);
+          }
+          setModalOpen(false);
+        }
+
+        function handleDeleteOutbound(tag) {
+          if (!confirm(`Delete outbound with tag "${tag}"?`)) return;
+          setOutbounds((prev) => prev.filter((ob) => ob.tag !== tag));
+        }
+
+        function handleCopyJSON(ob) {
+          const str = JSON.stringify(ob, null, 2);
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(str).then(
+              () => alert("Copied to clipboard!"),
+              (err) => alert("Failed to copy: " + err)
+            );
+          } else {
+            const el = document.createElement("textarea");
+            el.value = str;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand("copy");
+            document.body.removeChild(el);
+            alert("Copied!");
+          }
+        }
+
+        async function handleAddWarpOutbound() {
+          const existingWarp = outbounds.find(isWarpOutbound);
+          if (existingWarp) {
+            if (
+              !confirm(
+                "You already have a warp do you want me to regenerate and replace it?"
+              )
+            ) {
+              return;
+            }
+          }
+          try {
+            const resp = await fetch("/generate_warp", {
+              method: "GET",
+            });
+            if (!resp.ok) {
+              const errData = await resp.json();
+              throw new Error(errData.error || "Failed to generate warp");
+            }
+            const data = await resp.json();
+            setOutbounds((prev) => {
+              const filtered = prev.filter((ob) => !isWarpOutbound(ob));
+              return [...filtered, data];
+            });
+            alert("WARP Outbound added (or replaced) successfully!");
+          } catch (err) {
+            alert("Error adding WARP: " + err.message);
+          }
+        }
+
+        async function handleSaveAll() {
+          if (!confirm("Save all outbounds to the server?")) return;
+          setIsSavingAll(true);
+          try {
+            for (const ob of outbounds) {
+              const formData = new FormData();
+              formData.append("jsonEditor", JSON.stringify(ob));
+              const resp = await fetch(`/node/${nodeId}/save_outbound`, {
+                method: "POST",
+                body: formData,
+              });
+              if (!resp.ok) {
+                const errData = await resp.text();
+                throw new Error(`Failed to save outbound "${ob.tag}": ${errData}`);
+              }
+            }
+            alert("All outbounds saved successfully!");
+          } catch (err) {
+            alert("Error saving outbounds: " + err.message);
+          } finally {
+            setIsSavingAll(false);
+          }
+        }
+
+        return (
+          <div>
+            <div className="p-4 sm:p-6">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold mb-4 sm:mb-6 text-cyan-400 tracking-wide">
+                Node ID: {nodeId} - Outbounds
+              </h2>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center mb-6 sm:mb-8 space-y-3 sm:space-y-0 sm:space-x-4">
+                <button
+                  onClick={() => handleOpenModal(null)}
+                  className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-base neon-hover"
+                >
+                  Add New Outbound
+                </button>
+                <button
+                  onClick={handleAddWarpOutbound}
+                  className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-base neon-hover"
+                >
+                  Add Warp Outbound
+                </button>
+                <button
+                  onClick={handleSaveAll}
+                  className={`w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-base neon-hover ${
+                    isSavingAll ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isSavingAll}
+                >
+                  {isSavingAll ? "Saving..." : "Save All"}
+                </button>
+              </div>
+              <div className="overflow-x-auto rounded-lg">
+                <table id="outboundsTable" className="min-w-full text-left glass-effect shadow-xl">
+                  <thead className="text-sm sm:text-base font-medium uppercase bg-gradient-to-r from-indigo-900 via-purple-900 to-cyan-900 text-gray-200">
+                    <tr>
+                      <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4">Tag</th>
+                      <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4">Protocol</th>
+                      <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {outbounds.map((ob, idx) => (
+                      <tr key={idx} className="bg-gray-800/50 border-b border-gray-700/50 hover:bg-gray-700/70 transition">
+                        <td data-label="Tag" className="px-4 sm:px-6 py-3 sm:py-4 font-medium text-yellow-300">
+                          {ob.tag}
+                        </td>
+                        <td data-label="Protocol" className="px-4 sm:px-6 py-3 sm:py-4 text-cyan-300">
+                          {ob.protocol}
+                        </td>
+                        <td data-label="Actions" className="px-4 sm:px-6 py-3 sm:py-4">
+                          <div className="flex flex-wrap space-x-2 sm:space-x-2 gap-y-2">
+                            <button
+                              onClick={() => handleOpenModal(ob)}
+                              className="bg-cyan-600 hover:bg-cyan-700 text-white px-2 sm:px-3 py-1 rounded-lg text-sm neon-hover"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOutbound(ob.tag)}
+                              className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-3 py-1 rounded-lg text-sm neon-hover"
+                            >
+                              Delete
+                            </button>
+                            <button
+                              onClick={() => handleCopyJSON(ob)}
+                              className="bg-gray-700 hover:bg-gray-600 text-white px-2 sm:px-3 py-1 rounded-lg text-sm neon-hover"
+                            >
+                              Copy JSON
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {outbounds.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan="3"
+                          className="py-4 px-3 sm:px-6 border-b border-gray-700/50 text-center text-gray-400"
+                        >
+                          No outbounds found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {modalOpen && editingOutbound && (
+              <OutboundFormModal
+                isOpen={modalOpen}
+                onClose={handleCloseModal}
+                onSave={handleSaveOutbound}
+                initialOutbound={editingOutbound}
+              />
+            )}
+          </div>
+        );
+      }
+
+      /*****************************************************************************
+       * 13) Final render
+       *****************************************************************************/
+      ReactDOM.render(
+        <ManageOutboundsPage
+          nodeId={window.__NODE_ID__}
+          initialOutbounds={window.__OUTBOUNDS__ || []}
+        />,
+        document.getElementById("root")
+      );
+    </script>
+
+    <!-- CodeMirror JS for JSON syntax highlighting -->
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.9/lib/codemirror.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.9/mode/javascript/javascript.js"></script>
+  </body>
+</html>

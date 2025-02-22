@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xray Editor (Advanced Settings)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/lint/lint.min.css" />
+    <style>
+      body {
+        background: linear-gradient(135deg, #0d1b2a, #1b263b);
+        font-family: 'Inter', sans-serif;
+        overflow-x: hidden;
+        color: #e2e8f0;
+      }
+      .glass-effect {
+        background: rgba(27, 38, 59, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(167, 139, 250, 0.3);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      }
+      .neon-hover {
+        transition: all 0.3s ease;
+      }
+      .neon-hover:hover {
+        box-shadow: 0 0 20px rgba(167, 139, 250, 0.8);
+        transform: translateY(-3px);
+      }
+      @keyframes slideDownUp {
+        0% { top: -60px; opacity: 0; }
+        20% { top: 30px; opacity: 1; }
+        80% { top: 30px; opacity: 1; }
+        100% { top: -60px; opacity: 0; }
+      }
+      .notification {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(45deg, #facc15, #fbbf24);
+        color: #1e293b;
+        padding: 1rem 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        z-index: 100;
+        animation: slideDownUp 5s forwards;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        max-width: 80%;
+        text-align: center;
+      }
+      ::-webkit-scrollbar {
+        width: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1b263b;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #a78bfa;
+        border-radius: 5px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #c4b5fd;
+      }
+      #sidebarOverlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 40;
+      }
+      #sidebarOverlay.active {
+        display: block;
+      }
+      .CodeMirror.cm-s-modern {
+        background-color: #1e293b;
+        color: #e2e8f0;
+        font-family: 'Inter', sans-serif;
+        font-size: 15px;
+        line-height: 1.7;
+        border: 1px solid rgba(167, 139, 250, 0.3);
+        border-radius: 10px;
+        height: 450px;
+      }
+      .CodeMirror-scroll {
+        max-height: 450px;
+      }
+      .cm-s-modern .CodeMirror-gutters {
+        background-color: #1e293b;
+        border-right: 1px solid #4b5563;
+      }
+      .cm-s-modern .CodeMirror-linenumber {
+        color: #a5b4fc;
+      }
+      .cm-s-modern .CodeMirror-cursor {
+        border-left: 2px solid #a5b4fc;
+      }
+      .cm-s-modern .cm-keyword { color: #ff6b6b; }
+      .cm-s-modern .cm-atom { color: #f9e2af; }
+      .cm-s-modern .cm-number { color: #fbd38d; }
+      .cm-s-modern .cm-def { color: #a5b4fc; }
+      .cm-s-modern .cm-variable { color: #a5b4fc; }
+      .cm-s-modern .cm-property { color: #c4b5fd; }
+      .cm-s-modern .cm-string { color: #a3e635; }
+      .cm-s-modern .cm-comment { color: #64748b; font-style: italic; }
+      .cm-s-modern .cm-error { color: #f87171; border-bottom: 1px dashed #f87171; }
+      .cm-s-modern .cm-bracket { color: #d1d5db; }
+      #editorContainer.hidden {
+        display: none;
+      }
+      .CodeMirror-lint-marker-error {
+        width: 16px;
+        height: 16px;
+        background: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTEyIiBoZWlnaHQ9IjExMiIgdmlld0JveD0iMCAwIDExMiAxMTIiIHhtbDpzcGFjZT0icHJlc2VydmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbD0iI2Y4NzE3MSI+PHBhdGggZD0iTTIwLjYxNSAyMC42MTVjMjkuNzY3LTMwLjA1OCA3Ny44Mi0zMC4wNTggMTA3LjU3OSAweiIvPjxwYXRoIGQ9Ik0gMTEyIDMuMTE2MSBMIDExMiA4OC44ODQxIEwgMzkuMzA0MSAxMTIgWiIgdHJhbnNmb3JtPSJyb3RhdGUoLTQ1IDEyIDExMikiLz48L3N2Zz4=")
+          center center no-repeat;
+        background-size: 16px 16px;
+      }
+      .cm-highlight-line {
+        background: rgba(165, 180, 252, 0.25);
+        animation: highlight-fade 1.5s forwards;
+      }
+      @keyframes highlight-fade {
+        0% { background: rgba(165, 180, 252, 0.25); }
+        100% { background: transparent; }
+      }
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(167, 139, 250, 0.2);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      .reset-dropdown {
+        position: relative;
+      }
+      .reset-options {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 200px;
+        background: rgba(27, 38, 59, 0.9);
+        border: 1px solid rgba(167, 139, 250, 0.3);
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        z-index: 10;
+        transition: all 0.3s ease;
+      }
+      .reset-options.active {
+        display: block;
+        animation: dropdownFadeIn 0.3s ease;
+      }
+      @keyframes dropdownFadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .reset-btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: rgba(249, 115, 22, 0.1);
+        color: #f97316;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        transition: all 0.3s ease;
+      }
+      .reset-btn:hover {
+        background: #fb923c;
+        color: #fff;
+      }
+      .reset-trigger-btn {
+        background: #f97316;
+        color: #fff;
+      }
+      .reset-trigger-btn:hover {
+        background: #fb923c;
+      }
+      .btn-loading {
+        position: relative;
+        opacity: 0.7;
+        pointer-events: none;
+      }
+      .btn-loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #fff;
+        border-top: 2px solid transparent;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        transform: translate(-50%, -50%);
+      }
+      @keyframes spin {
+        0% { transform: translate(-50%, -50%) rotate(0deg); }
+        100% { transform: translate(-50%, -50%) rotate(360deg); }
+      }
+      .menu-icon {
+        width: 20px;
+        height: 20px;
+      }
+      .menu-icon.telegram {
+        filter: brightness(0) invert(1); /* Makes the Telegram icon white */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="relative min-h-screen">
+      <div id="sidebarOverlay" onclick="closeSidebar()"></div>
+      <aside id="sidebar" class="fixed top-0 left-0 h-screen w-72 transform -translate-x-full glass-effect transition-transform duration-300 ease-in-out z-50">
+        <div class="flex flex-col h-full py-6">
+          <div class="flex justify-between items-center mb-8 px-6">
+            <span class="text-2xl font-bold text-cyan-400 tracking-wide">Xarneshin</span>
+            <button id="closeSidebarButton" class="text-gray-300 hover:text-cyan-400 text-3xl focus:outline-none sm:hidden" onclick="closeSidebar()">×</button>
+          </div>
+          <nav class="flex-1 px-6 space-y-3">
+            <a href="/node/{{ node_id }}/overview" class="block px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover">Overview</a>
+            <a href="/node/{{ node_id }}/inbounds" class="block px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover">Inbounds</a>
+            <a href="/node/{{ node_id }}/outbounds" class="block px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover">Outbounds</a>
+            <a href="/node/{{ node_id }}/rules" class="block px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover">Routing Rules</a>
+            <a href="/node/{{ node_id }}/dns" class="block px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover">DNS</a>
+            <a href="/node/{{ node_id }}/balancers" class="block px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover">Balancer</a>
+            <a href="/node/{{ node_id }}/reverse" class="block px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover">Reverse</a>
+            <a href="/node/{{ node_id }}/advance" class="block px-4 py-3 rounded-lg text-cyan-400 bg-gray-700 border-l-4 border-cyan-400 font-bold neon-hover">Advance Settings & Editor</a>
+            <a href="/nodes" class="block px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover">Back to Nodes</a>
+            <!-- "Support Us" Submenu -->
+            <div class="relative py-2">
+              <button
+                onclick="toggleSubmenu()"
+                class="w-full px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover flex justify-between items-center focus:outline-none"
+              >
+                <span>Support Us</span>
+                <svg
+                  id="submenuArrow"
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 transform transition-transform"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div
+                id="submenuContent"
+                class="hidden mt-2 space-y-2 pl-6 text-base glass-effect rounded-lg py-2"
+              >
+                <a
+                  href="https://t.me/XenonNet"
+                  target="_blank"
+                  class="flex items-center space-x-2 px-2 py-1 rounded-md text-gray-300 hover:text-cyan-400 neon-hover"
+                >
+                  <img
+                    src="https://www.svgrepo.com/download/519656/telegram.svg"
+                    class="menu-icon telegram"
+                    alt="Telegram logo"
+                  />
+                  <span>Join Our Channel (@XenonNet)</span>
+                </a>
+                <a
+                  href="https://github.com/MeXenon"
+                  target="_blank"
+                  class="flex items-center space-x-2 px-2 py-1 rounded-md text-gray-300 hover:text-cyan-400 neon-hover"
+                >
+                  <svg
+                    class="menu-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 16 16"
+                    fill="#fff"
+                  >
+                    <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.016-1.49C3.97 14.91 3.4 13.81 3.4 13.81c-.36-.91-.88-1.15-.88-1.15-.72-.49.06-.48.06-.48.8.06 1.22.82 1.22.82.71 1.21 1.87.87 2.33.67.07-.775.28-1.305.51-1.07-2.67-.303-5.47-1.33-5.47-5.93 0-1.31.468-2.382 1.235-3.222-.123-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.52 11.52 0 016 0c2.29-1.553 3.296-1.23 3.296-1.23.655 1.653.242 2.873.12 3.176.77.84 1.232 1.912 1.232 3.222 0 4.609-2.803 5.624-5.47 5.92.43.372.814 1.102.814 2.222 0 1.606-.015 2.896-.015 3.286 0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                  </svg>
+                  <span>GitHub (MeXenon)</span>
+                </a>
+              </div>
+            </div>
+          </nav>
+          <div class="px-6 mt-8">
+            <a href="/logout" class="block w-full text-center px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white neon-hover font-semibold">Logout</a>
+          </div>
+        </div>
+      </aside>
+      <div id="mainContent" class="transition-all duration-300 ml-0 p-6 lg:p-8">
+        <header class="flex items-center justify-between py-4">
+          <div class="flex items-center">
+            <button id="hamburgerButton" class="p-2 text-gray-300 hover:text-cyan-400 transition focus:outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h1 class="text-2xl md:text-3xl ml-4 font-semibold text-gray-100 tracking-wide">Advance Settings & Editor</h1>
+          </div>
+          <span class="text-sm text-gray-400">Node ID: {{ node_id }}</span>
+        </header>
+        <main class="mt-6">
+          <div id="app" class="max-w-7xl mx-auto">
+            <div class="glass-effect p-6 rounded-xl shadow-lg">
+              <h1 class="text-2xl md:text-3xl font-semibold text-center mb-6 text-cyan-400 tracking-wide">Xray Editor (Advanced Settings)</h1>
+              <div class="flex flex-col lg:flex-row gap-8">
+                <div class="lg:w-1/2 flex flex-col">
+                  <div class="section-header">
+                    <h2 class="text-xl font-semibold text-cyan-400">Configuration Toggles</h2>
+                  </div>
+                  <div class="mb-6">
+                    <label class="flex items-center cursor-pointer select-none">
+                      <span class="mr-3 text-base text-gray-300">Enable Enhanced Logging</span>
+                      <div class="relative">
+                        <input type="checkbox" class="sr-only peer" v-model="enableEnhancedLog" />
+                        <div class="w-12 h-6 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500 peer-checked:bg-cyan-600 transition-all duration-300"></div>
+                        <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
+                      </div>
+                    </label>
+                    <div v-if="enableEnhancedLog" class="mt-4 space-y-4">
+                      <div>
+                        <label class="block text-sm text-gray-300 mb-1">Access Log Path</label>
+                        <input type="text" v-model="logAccess" class="w-full px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                      </div>
+                      <div>
+                        <label class="block text-sm text-gray-300 mb-1">Error Log Path</label>
+                        <input type="text" v-model="logError" class="w-full px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                      </div>
+                      <div>
+                        <label class="block text-sm text-gray-300 mb-1">Log Level</label>
+                        <select v-model="logLevel" class="w-full px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                          <option value="debug">Debug</option>
+                          <option value="info">Info</option>
+                          <option value="warning">Warning</option>
+                          <option value="error">Error</option>
+                          <option value="none">None</option>
+                        </select>
+                      </div>
+                      <label class="flex items-center cursor-pointer select-none">
+                        <span class="mr-3 text-sm text-gray-300">Enable DNS Log</span>
+                        <div class="relative">
+                          <input type="checkbox" class="sr-only peer" v-model="logDns" />
+                          <div class="w-10 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500 peer-checked:bg-cyan-600 transition-all duration-300"></div>
+                          <div class="absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+                        </div>
+                      </label>
+                      <div>
+                        <label class="block text-sm text-gray-300 mb-1">Mask Address</label>
+                        <select v-model="logMaskAddress" class="w-full px-3 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                          <option value="">Default</option>
+                          <option value="quarter">Quarter</option>
+                          <option value="half">Half</option>
+                          <option value="full">Full</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mb-6">
+                    <label class="flex items-center cursor-pointer select-none">
+                      <span class="mr-3 text-base text-gray-300">Enable Policy</span>
+                      <div class="relative">
+                        <input type="checkbox" class="sr-only peer" v-model="enablePolicy" />
+                        <div class="w-12 h-6 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500 peer-checked:bg-cyan-600 transition-all duration-300"></div>
+                        <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
+                      </div>
+                    </label>
+                    <div v-if="enablePolicy" class="mt-4 space-y-4">
+                      <div class="flex items-center gap-2">
+                        <label class="text-sm text-gray-300">Level</label>
+                        <input v-model="policyLevel" type="text" class="w-16 px-2 py-1 bg-gray-900/50 border border-gray-700 rounded-lg text-gray-200 text-center focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                      </div>
+                      <div class="grid grid-cols-2 gap-4">
+                        <label class="flex items-center cursor-pointer select-none">
+                          <span class="mr-3 text-sm text-gray-300">Stats User Downlink</span>
+                          <div class="relative">
+                            <input type="checkbox" class="sr-only peer" v-model="statsUserDownlink" />
+                            <div class="w-10 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500 peer-checked:bg-cyan-600 transition-all duration-300"></div>
+                            <div class="absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+                          </div>
+                        </label>
+                        <label class="flex items-center cursor-pointer select-none">
+                          <span class="mr-3 text-sm text-gray-300">Stats User Uplink</span>
+                          <div class="relative">
+                            <input type="checkbox" class="sr-only peer" v-model="statsUserUplink" />
+                            <div class="w-10 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500 peer-checked:bg-cyan-600 transition-all duration-300"></div>
+                            <div class="absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+                          </div>
+                        </label>
+                      </div>
+                      <h3 class="text-base font-semibold text-cyan-400 mt-4">System Stats</h3>
+                      <div class="grid grid-cols-2 gap-4">
+                        <label class="flex items-center cursor-pointer select-none">
+                          <span class="mr-3 text-sm text-gray-300">Inbound Downlink</span>
+                          <div class="relative">
+                            <input type="checkbox" class="sr-only peer" v-model="statsInboundDownlink" />
+                            <div class="w-10 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500 peer-checked:bg-cyan-600 transition-all duration-300"></div>
+                            <div class="absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+                          </div>
+                        </label>
+                        <label class="flex items-center cursor-pointer select-none">
+                          <span class="mr-3 text-sm text-gray-300">Inbound Uplink</span>
+                          <div class="relative">
+                            <input type="checkbox" class="sr-only peer" v-model="statsInboundUplink" />
+                            <div class="w-10 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500 peer-checked:bg-cyan-600 transition-all duration-300"></div>
+                            <div class="absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+                          </div>
+                        </label>
+                        <label class="flex items-center cursor-pointer select-none">
+                          <span class="mr-3 text-sm text-gray-300">Outbound Downlink</span>
+                          <div class="relative">
+                            <input type="checkbox" class="sr-only peer" v-model="statsOutboundDownlink" />
+                            <div class="w-10 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500 peer-checked:bg-cyan-600 transition-all duration-300"></div>
+                            <div class="absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+                          </div>
+                        </label>
+                        <label class="flex items-center cursor-pointer select-none">
+                          <span class="mr-3 text-sm text-gray-300">Outbound Uplink</span>
+                          <div class="relative">
+                            <input type="checkbox" class="sr-only peer" v-model="statsOutboundUplink" />
+                            <div class="w-10 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500 peer-checked:bg-cyan-600 transition-all duration-300"></div>
+                            <div class="absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mb-6">
+                    <label class="flex items-center cursor-pointer select-none">
+                      <span class="mr-3 text-base text-gray-300">Enable Sniffing (All Inbounds)</span>
+                      <div class="relative">
+                        <input type="checkbox" class="sr-only peer" v-model="sniffingEnabled" @change="toggleAllSniffing" />
+                        <div class="w-12 h-6 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-purple-500 peer-checked:bg-purple-600 transition-all duration-300"></div>
+                        <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
+                      </div>
+                    </label>
+                  </div>
+                  <div class="grid grid-cols-2 gap-4">
+                    <button id="saveLocallyBtn" class="py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-white font-semibold neon-hover" :class="{ 'btn-loading': isSaving }" @click="saveLocally" :disabled="isSaving">Save Locally</button>
+                    <button id="saveServerBtn" class="py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white font-semibold neon-hover" :class="{ 'btn-loading': isSaving }" @click="saveToServer" :disabled="isSaving">Save to Server</button>
+                  </div>
+                </div>
+                <div class="lg:w-1/2 flex flex-col">
+                  <div class="section-header">
+                    <h2 class="text-xl font-semibold text-cyan-400">Manual Editor</h2>
+                  </div>
+                  <p class="text-sm text-gray-400 mb-4">Manually edit the configuration.</p>
+                  <button v-if="!editorVisible" class="py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-white font-semibold neon-hover" @click="openEditor">Open Editor</button>
+                  <button v-else class="py-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-semibold neon-hover" @click="closeEditor">Close Editor</button>
+                  <div v-if="editorVisible" class="mt-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                      <button class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="jumpTo('inbounds')">Inbounds</button>
+                      <button class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="jumpTo('outbounds')">Outbounds</button>
+                      <button class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="jumpTo('dns')">DNS</button>
+                      <button class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="jumpTo('balancers')">Balancers</button>
+                      <button class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="jumpTo('routing')">Routing</button>
+                      <button class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="jumpTo('policy')">Policy</button>
+                      <button class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="jumpTo('reverse')">Reverse</button>
+                      <button class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="jumpTo('log')">Log</button>
+                    </div>
+                    <div class="reset-dropdown mb-4">
+                      <button class="reset-trigger-btn px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="toggleResetDropdown">Reset Options</button>
+                      <div class="reset-options" :class="{ 'active': showResetDropdown }">
+                        <button class="reset-btn" @click="resetEditorSection('routing')">Reset Routing</button>
+                        <button class="reset-btn" @click="resetEditorSection('outbounds')">Reset Outbounds</button>
+                        <button class="reset-btn" @click="resetEditorSection('inbounds')">Reset Inbounds</button>
+                        <button class="reset-btn" @click="resetEditorSection('dns')">Reset DNS</button>
+                        <button class="reset-btn" @click="resetEditorSection('balancers')">Reset Balancers</button>
+                      </div>
+                    </div>
+                    <div id="editorContainer" :class="{'hidden': !editorVisible}" class="relative rounded-lg overflow-hidden">
+                      <textarea id="codeEditorRoot" class="w-full h-full"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/lint/lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/lint/json-lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsonlint/1.6.0/jsonlint.min.js"></script>
+
+    <script>
+      window.jsonlint = window.jsonlint || { parse: function(text) { try { return JSON.parse(text); } catch (e) { throw e; } } };
+      const { createApp } = Vue;
+      const rawConfig = {{ config_str|safe }};
+      const defaultConfig = {
+        routing: { rules: [] },
+        outbounds: [],
+        inbounds: [],
+        dns: {},
+        balancers: []
+      };
+
+      createApp({
+        data() {
+          return {
+            editorVisible: false,
+            codeEditor: null,
+            codeValue: "",
+            enableEnhancedLog: false,
+            logAccess: "/var/lib/marznode/xray_logs/access.log",
+            logError: "/var/lib/marznode/xray_logs/error.log",
+            logLevel: "warning",
+            logDns: false,
+            logMaskAddress: "",
+            enablePolicy: false,
+            policyLevel: "0",
+            statsUserDownlink: true,
+            statsUserUplink: true,
+            statsInboundDownlink: true,
+            statsInboundUplink: true,
+            statsOutboundDownlink: true,
+            statsOutboundUplink: true,
+            sniffingEnabled: false,
+            showResetDropdown: false,
+            isSaving: false
+          };
+        },
+        mounted() {
+          let initialObj = {};
+          try {
+            const parsed = JSON.parse(rawConfig);
+            initialObj = parsed || {};
+          } catch (err) {
+            console.warn("Error parsing raw config:", err);
+          }
+          this.codeValue = JSON.stringify(initialObj, null, 2);
+          if (initialObj.log) {
+            if (initialObj.log.access !== undefined || initialObj.log.error !== undefined || initialObj.log.dnsLog !== undefined || initialObj.log.maskAddress !== undefined) {
+              this.enableEnhancedLog = true;
+              this.logAccess = initialObj.log.access || "/var/lib/marznode/xray_logs/access.log";
+              this.logError = initialObj.log.error || "/var/lib/marznode/xray_logs/error.log";
+              this.logLevel = initialObj.log.loglevel || "warning";
+              this.logDns = initialObj.log.dnsLog || false;
+              this.logMaskAddress = initialObj.log.maskAddress || "";
+            } else {
+              this.enableEnhancedLog = false;
+              this.logLevel = initialObj.log.loglevel || "warning";
+            }
+          }
+          if (initialObj.policy) {
+            this.enablePolicy = true;
+            const levelKeys = initialObj.policy.levels ? Object.keys(initialObj.policy.levels) : [];
+            if (levelKeys.length > 0) {
+              this.policyLevel = levelKeys[0];
+              const lv = initialObj.policy.levels[this.policyLevel] || {};
+              this.statsUserDownlink = !!lv.statsUserDownlink;
+              this.statsUserUplink = !!lv.statsUserUplink;
+            }
+            const sys = initialObj.policy.system || {};
+            this.statsInboundDownlink = !!sys.statsInboundDownlink;
+            this.statsInboundUplink = !!sys.statsInboundUplink;
+            this.statsOutboundDownlink = !!sys.statsOutboundDownlink;
+            this.statsOutboundUplink = !!sys.statsOutboundUplink;
+          }
+          if (initialObj.inbounds && initialObj.inbounds.length > 0) {
+            this.sniffingEnabled = initialObj.inbounds.every(ib => ib.sniffing && ib.sniffing.enabled === true);
+          }
+          this.handleOutsideClick = (e) => {
+            const resetDropdown = this.$el.querySelector('.reset-dropdown');
+            if (resetDropdown && !resetDropdown.contains(e.target)) {
+              this.showResetDropdown = false;
+            }
+          };
+          document.addEventListener('click', this.handleOutsideClick);
+        },
+        beforeUnmount() {
+          document.removeEventListener('click', this.handleOutsideClick);
+        },
+        watch: {
+          enableEnhancedLog() { this.applyTogglesToCode(); },
+          logAccess() { if(this.enableEnhancedLog) this.applyTogglesToCode(); },
+          logError() { if(this.enableEnhancedLog) this.applyTogglesToCode(); },
+          logLevel() { this.applyTogglesToCode(); },
+          logDns() { if(this.enableEnhancedLog) this.applyTogglesToCode(); },
+          logMaskAddress() { if(this.enableEnhancedLog) this.applyTogglesToCode(); },
+          enablePolicy() { this.applyTogglesToCode(); },
+          policyLevel() { if(this.enablePolicy) this.applyTogglesToCode(); },
+          statsUserDownlink() { if(this.enablePolicy) this.applyTogglesToCode(); },
+          statsUserUplink() { if(this.enablePolicy) this.applyTogglesToCode(); },
+          statsInboundDownlink() { if(this.enablePolicy) this.applyTogglesToCode(); },
+          statsInboundUplink() { if(this.enablePolicy) this.applyTogglesToCode(); },
+          statsOutboundDownlink() { if(this.enablePolicy) this.applyTogglesToCode(); },
+          statsOutboundUplink() { if(this.enablePolicy) this.applyTogglesToCode(); }
+        },
+        methods: {
+          openEditor() {
+            this.editorVisible = true;
+            this.$nextTick(() => {
+              const editorEl = document.getElementById("codeEditorRoot");
+              if (editorEl) {
+                this.codeEditor = CodeMirror.fromTextArea(editorEl, {
+                  value: this.codeValue,
+                  mode: "application/json",
+                  theme: "modern",
+                  lineNumbers: true,
+                  lineWrapping: true,
+                  gutters: ["CodeMirror-lint-markers"],
+                  lint: true,
+                  readOnly: false
+                });
+                this.codeEditor.setValue(this.codeValue);
+                this.codeEditor.on("change", this.onEditorChange);
+                this.codeEditor.refresh();
+              }
+            });
+          },
+          closeEditor() {
+            if (this.codeEditor) {
+              this.codeEditor.toTextArea();
+              this.codeEditor = null;
+            }
+            this.editorVisible = false;
+            this.showResetDropdown = false;
+          },
+          onEditorChange() {
+            const newVal = this.codeEditor.getValue();
+            let parsed;
+            try {
+              parsed = JSON.parse(newVal);
+              this.codeValue = newVal;
+            } catch (err) {
+              console.warn("Invalid JSON in editor:", err);
+              return;
+            }
+            if (parsed.log) {
+              if (parsed.log.access !== undefined || parsed.log.error !== undefined || parsed.log.dnsLog !== undefined || parsed.log.maskAddress !== undefined) {
+                this.enableEnhancedLog = true;
+                this.logAccess = parsed.log.access || "/var/lib/marznode/xray_logs/access.log";
+                this.logError = parsed.log.error || "/var/lib/marznode/xray_logs/error.log";
+                this.logLevel = parsed.log.loglevel || "warning";
+                this.logDns = parsed.log.dnsLog || false;
+                this.logMaskAddress = parsed.log.maskAddress || "";
+              } else {
+                this.enableEnhancedLog = false;
+                this.logLevel = parsed.log.loglevel || "warning";
+              }
+            } else {
+              this.logLevel = "warning";
+              this.enableEnhancedLog = false;
+            }
+            if (parsed.policy) {
+              this.enablePolicy = true;
+              const levelKeys = parsed.policy.levels ? Object.keys(parsed.policy.levels) : [];
+              if (levelKeys.length > 0) {
+                this.policyLevel = levelKeys[0];
+                const lv = parsed.policy.levels[this.policyLevel] || {};
+                this.statsUserDownlink = !!lv.statsUserDownlink;
+                this.statsUserUplink = !!lv.statsUserUplink;
+              }
+              const sys = parsed.policy.system || {};
+              this.statsInboundDownlink = !!sys.statsInboundDownlink;
+              this.statsInboundUplink = !!sys.statsInboundUplink;
+              this.statsOutboundDownlink = !!sys.statsOutboundDownlink;
+              this.statsOutboundUplink = !!sys.statsOutboundUplink;
+            } else {
+              this.enablePolicy = false;
+            }
+          },
+          applyTogglesToCode() {
+            let obj;
+            try {
+              obj = JSON.parse(this.codeValue);
+            } catch (err) {
+              console.warn("Cannot apply toggles: Invalid JSON");
+              return;
+            }
+            let logConfig = this.enableEnhancedLog ? {
+              access: this.logAccess,
+              error: this.logError,
+              loglevel: this.logLevel,
+              dnsLog: this.logDns,
+              maskAddress: this.logMaskAddress
+            } : { loglevel: "warning" };
+            let policyConfig = this.enablePolicy ? {
+              levels: {
+                [this.policyLevel]: {
+                  statsUserDownlink: this.statsUserDownlink,
+                  statsUserUplink: this.statsUserUplink
+                }
+              },
+              system: {
+                statsInboundDownlink: this.statsInboundDownlink,
+                statsInboundUplink: this.statsInboundUplink,
+                statsOutboundDownlink: this.statsOutboundDownlink,
+                statsOutboundUplink: this.statsOutboundUplink
+              }
+            } : null;
+            const newObj = { ...obj, log: logConfig };
+            if (policyConfig) newObj.policy = policyConfig;
+            this.codeValue = JSON.stringify(newObj, null, 2);
+            if (this.editorVisible && this.codeEditor) {
+              const scrollInfo = this.codeEditor.getScrollInfo();
+              const cursor = this.codeEditor.getCursor();
+              this.codeEditor.setValue(this.codeValue);
+              this.codeEditor.scrollTo(scrollInfo.left, scrollInfo.top);
+              this.codeEditor.setCursor(cursor);
+            }
+          },
+          saveLocally() {
+            this.applyTogglesToCode();
+            this.showNotification("Changes saved locally (not sent to server)!");
+          },
+          async saveToServer() {
+            if (this.isSaving) return;
+            this.isSaving = true;
+            this.applyTogglesToCode();
+            try {
+              JSON.parse(this.codeValue);
+            } catch (err) {
+              alert("Cannot save: Invalid JSON!\n" + err);
+              this.isSaving = false;
+              return;
+            }
+            try {
+              const resp = await fetch("{{ url_for('advanced_editor_save', node_id=node_id) }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ config: this.codeValue })
+              });
+              const data = await resp.json();
+              if (resp.ok && data.success) {
+                this.showNotification("Configuration saved successfully!");
+              } else {
+                alert("Failed to save:\n" + JSON.stringify(data));
+              }
+            } catch (netErr) {
+              alert("Network error:\n" + netErr);
+            } finally {
+              this.isSaving = false;
+            }
+          },
+          jumpTo(keyword) {
+            if (!this.editorVisible || !this.codeEditor) {
+              alert("Please open the editor first.");
+              return;
+            }
+            const text = this.codeEditor.getValue();
+            const pos = text.indexOf(`"${keyword}"`);
+            if (pos === -1) {
+              alert(`"${keyword}" not found in configuration.`);
+              return;
+            }
+            const prefix = text.slice(0, pos);
+            const lines = prefix.split("\n");
+            const lineNumber = lines.length - 1;
+            const chNumber = lines[lines.length - 1].length;
+            this.codeEditor.scrollIntoView({ line: lineNumber, ch: chNumber }, 200);
+            const doc = this.codeEditor.getDoc();
+            doc.addLineClass(lineNumber, "background", "cm-highlight-line");
+            setTimeout(() => doc.removeLineClass(lineNumber, "background", "cm-highlight-line"), 2000);
+            this.codeEditor.setCursor({ line: lineNumber, ch: chNumber });
+            this.codeEditor.focus();
+          },
+          toggleAllSniffing() {
+            let obj;
+            try {
+              obj = JSON.parse(this.codeValue);
+            } catch (err) {
+              alert("Cannot toggle sniffing: Invalid JSON!");
+              return;
+            }
+            if (obj.inbounds && Array.isArray(obj.inbounds)) {
+              obj.inbounds = obj.inbounds.map(inbound => {
+                inbound.sniffing = inbound.sniffing || {};
+                inbound.sniffing.enabled = this.sniffingEnabled;
+                return inbound;
+              });
+            }
+            this.codeValue = JSON.stringify(obj, null, 2);
+            if (this.editorVisible && this.codeEditor) {
+              const scrollInfo = this.codeEditor.getScrollInfo();
+              const cursor = this.codeEditor.getCursor();
+              this.codeEditor.setValue(this.codeValue);
+              this.codeEditor.scrollTo(scrollInfo.left, scrollInfo.top);
+              this.codeEditor.setCursor(cursor);
+            }
+            this.showNotification(`Sniffing ${this.sniffingEnabled ? 'enabled' : 'disabled'} for all inbounds!`);
+          },
+          toggleResetDropdown() {
+            this.showResetDropdown = !this.showResetDropdown;
+          },
+          resetEditorSection(section) {
+            if (!confirm(`Are you sure you want to reset ${section}? This cannot be undone.`)) return;
+            let obj;
+            try {
+              obj = JSON.parse(this.codeValue);
+            } catch (err) {
+              alert("Cannot reset: Invalid JSON!");
+              return;
+            }
+            if (defaultConfig.hasOwnProperty(section)) {
+              obj[section] = defaultConfig[section];
+            }
+            this.codeValue = JSON.stringify(obj, null, 2);
+            if (this.editorVisible && this.codeEditor) {
+              const scrollInfo = this.codeEditor.getScrollInfo();
+              const cursor = this.codeEditor.getCursor();
+              this.codeEditor.setValue(this.codeValue);
+              this.codeEditor.scrollTo(scrollInfo.left, scrollInfo.top);
+              this.codeEditor.setCursor(cursor);
+            }
+            this.showNotification(`${section.charAt(0).toUpperCase() + section.slice(1)} reset successfully!`);
+            this.showResetDropdown = false;
+          },
+          showNotification(message) {
+            const notif = document.createElement("div");
+            notif.className = "notification";
+            notif.textContent = message;
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 5000);
+          }
+        }
+      }).mount("#app");
+
+      let sidebarOpen = false;
+      let submenuOpen = false;
+      const sidebarEl = document.getElementById('sidebar');
+      const hamburgerButtonEl = document.getElementById('hamburgerButton');
+      const sidebarOverlay = document.getElementById('sidebarOverlay');
+      const submenuContent = document.getElementById('submenuContent');
+      const submenuArrow = document.getElementById('submenuArrow');
+
+      hamburgerButtonEl.addEventListener('click', () => {
+        sidebarOpen = !sidebarOpen;
+        sidebarEl.classList.toggle('-translate-x-full', !sidebarOpen);
+        sidebarOverlay.classList.toggle('active', sidebarOpen);
+      });
+
+      function closeSidebar() {
+        sidebarOpen = false;
+        sidebarEl.classList.add('-translate-x-full');
+        sidebarOverlay.classList.remove('active');
+      }
+
+      function toggleSubmenu() {
+        submenuOpen = !submenuOpen;
+        if (submenuOpen) {
+          submenuContent.classList.remove('hidden');
+          submenuArrow.classList.add('rotate-180');
+        } else {
+          submenuContent.classList.add('hidden');
+          submenuArrow.classList.remove('rotate-180');
+        }
+      }
+    </script>
+  </body>
+</html>

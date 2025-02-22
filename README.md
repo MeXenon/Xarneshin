@@ -34,8 +34,7 @@ Everything is handled by the `install.sh` script—no manual installation or run
 ### Prerequisites
 
 - Python 3.6+
-- `git`, `curl`, `jq`, and `systemd` installed
-- Marzneshin installed and running (optional, for full integration)
+- Marzneshin installed and running.
 
 ### Steps
 

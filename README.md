@@ -60,7 +60,8 @@ git clone https://github.com/MeXenon/Xarneshin.git ~/Xenon.xray && cd ~/Xenon.xr
    Use the CLI to configure HTTPS with your domain and certificates:
 
    xarneshin
-   # Select option 7: Configure HTTPS Settings
+   
+   **Select option 7: Configure HTTPS Settings**
 
 ---
 

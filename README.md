@@ -97,7 +97,7 @@ xarneshin --help
 ## 🙏 Acknowledgments
 
 - [Marzneshin](https://github.com/marzneshin/marzneshin) - The backbone proxy management system.
-- [MeXenon](https://github.com/MeXenon) - Lead developer and visionary behind Xarneshin.
+- [MeXenon](https://github.com/MeXenon) | [MeArgon telegram](https://t.me/MeArgon) - Lead developer and visionary behind Xarneshin.
 - [XenonNet](https://github.com/XenonNet) - Sponsoring
 ---
 

@@ -410,9 +410,13 @@
         const openEditServer = (index) => {
           const srv = servers[index];
           setEditingServer({
-            connectionType: srv.connectionType || 'udp',
-            address: srv.address || '',
-            port: srv.port || '',
+            connectionType: srv.address.startsWith("quic+local://") ? "doq_local" :
+                           srv.address.startsWith("https+local://") ? "doh_local" :
+                           srv.address.startsWith("https://") ? "doh" :
+                           srv.address.startsWith("tcp+local://") ? "tcp_local" :
+                           srv.address.startsWith("tcp://") ? "tcp" : "udp",
+            address: srv.address.replace(/^(tcp|tcp\+local|https|https\+local|quic\+local):\/\//, "").replace(/(:[0-9]+|\/dns-query)$/, ""),
+            port: srv.port || (srv.address.match(/:([0-9]+)$/) ? srv.address.match(/:([0-9]+)$/)[1] : ''),
             domains: Array.isArray(srv.domains) ? srv.domains.join(", ") : (srv.domains || ''),
             expectIPs: Array.isArray(srv.expectIPs) ? srv.expectIPs.join(", ") : (srv.expectIPs || ''),
             clientIP: srv.clientIP || '',
@@ -437,6 +441,37 @@
           if (newServer.port) newServer.port = parseInt(newServer.port);
           if (newServer.domains) newServer.domains = newServer.domains.split(",").map(s => s.trim()).filter(s => s);
           if (newServer.expectIPs) newServer.expectIPs = newServer.expectIPs.split(",").map(s => s.trim()).filter(s => s);
+
+          let formattedAddress = newServer.address;
+          switch (newServer.connectionType) {
+            case "udp":
+              formattedAddress = newServer.port ? `${newServer.address}:${newServer.port}` : newServer.address;
+              break;
+            case "tcp":
+              formattedAddress = `tcp://${newServer.address}${newServer.port ? `:${newServer.port}` : ":53"}`;
+              break;
+            case "tcp_local":
+              formattedAddress = `tcp+local://${newServer.address}${newServer.port ? `:${newServer.port}` : ":53"}`;
+              break;
+            case "doh":
+              if (!formattedAddress.startsWith("https://")) {
+                formattedAddress = `https://${formattedAddress}/dns-query`;
+              }
+              break;
+            case "doh_local":
+              if (!formattedAddress.startsWith("https+local://")) {
+                formattedAddress = `https+local://${formattedAddress}/dns-query`;
+              }
+              break;
+            case "doq_local":
+              if (!formattedAddress.startsWith("quic+local://")) {
+                formattedAddress = `quic+local://${formattedAddress}${newServer.port ? `:${newServer.port}` : ":853"}`;
+              }
+              break;
+          }
+          delete newServer.connectionType;
+          newServer.address = formattedAddress;
+
           let newServers = [...servers];
           if (editingIndex >= 0) {
             newServers[editingIndex] = newServer;
@@ -480,9 +515,18 @@
           } else if (preset === "adguard_family") {
             presetGlobal = { tag: "dns_inbound", queryStrategy: "UseIP" };
             presetServers = ["https://dns-family.adguard.com/dns-query"];
-          } else if (preset === "dynx_ir_antisanc") {
+          } else if (preset === "dynx_adblock") {
             presetGlobal = { tag: "dns_inbound", queryStrategy: "UseIP" };
-            presetServers = ["212.23.214.119"];
+            presetServers = ["https://dns.dynx.pro/dns-query"];
+          } else if (preset === "dynx_adblock_family") {
+            presetGlobal = { tag: "dns_inbound", queryStrategy: "UseIP" };
+            presetServers = ["https://dns.dynx.pro/dns-query/family"];
+          } else if (preset === "dynx_adblock_quic") {
+            presetGlobal = { tag: "dns_inbound", queryStrategy: "UseIP" };
+            presetServers = ["quic+local://dns.dynx.pro:853"];
+          } else if (preset === "dynx_iran_antisanc_quic") {
+            presetGlobal = { tag: "dns_inbound", queryStrategy: "UseIP" };
+            presetServers = ["quic+local://anti-ban.dynx.pro:853"];
           }
           setGlobalDns(prev => ({
             ...prev,
@@ -493,25 +537,19 @@
             globalDisableFallback: false,
             globalDisableFallbackIfMatch: false,
           }));
-          const newServers = presetServers.map(addr => {
-            let connType = "udp";
-            if (addr.startsWith("https://")) connType = "doh";
-            else if (addr.startsWith("https+local://")) connType = "doh_local";
-            else if (addr.startsWith("quic+local://")) connType = "doq_local";
-            return { address: addr, connectionType: connType };
-          });
+          const newServers = presetServers.map(addr => ({ address: addr }));
           setServers(newServers);
         };
 
         const saveDnsConfig = () => {
           setSaving(true);
           const payload = {
-            globalDnsTag: globalDns.globalDnsTag,
-            globalClientIp: globalDns.globalClientIp,
-            globalQueryStrategy: globalDns.globalQueryStrategy,
-            globalDisableCache: globalDns.globalDisableCache,
-            globalDisableFallback: globalDns.globalDisableFallback,
-            globalDisableFallbackIfMatch: globalDns.globalDisableFallbackIfMatch,
+            tag: globalDns.globalDnsTag,
+            clientIp: globalDns.globalClientIp,
+            queryStrategy: globalDns.globalQueryStrategy,
+            disableCache: globalDns.globalDisableCache,
+            disableFallback: globalDns.globalDisableFallback,
+            disableFallbackIfMatch: globalDns.globalDisableFallbackIfMatch,
             hosts: {},
             servers: servers
           };
@@ -564,7 +602,10 @@
                         <option value="yandex">Yandex</option>
                         <option value="adguard">Adguard DNS</option>
                         <option value="adguard_family">Adguard Family DNS</option>
-                        <option value="dynx_ir_antisanc">Dynx - ir.antiSanc</option>
+                        <option value="dynx_adblock">Dynx Adblock DNS</option>
+                        <option value="dynx_adblock_family">Dynx Adblock & Family DNS</option>
+                        <option value="dynx_adblock_quic">Dynx Adblock QUIC DNS</option>
+                        <option value="dynx_iran_antisanc_quic">Dynx Iran Anti-Sanctions QUIC DNS</option>
                       </select>
                     </div>
                     <div>
@@ -639,7 +680,13 @@
                   <tbody>
                     {servers.map((srv, index) => (
                       <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-700/70 transition">
-                        <td className="py-2 px-3 sm:px-6 border-r border-gray-700/50">{srv.connectionType || "udp"}</td>
+                        <td className="py-2 px-3 sm:px-6 border-r border-gray-700/50">
+                          {srv.address.startsWith("quic+local://") ? "DOQ Local" :
+                           srv.address.startsWith("https+local://") ? "DOH Local" :
+                           srv.address.startsWith("https://") ? "DOH" :
+                           srv.address.startsWith("tcp+local://") ? "TCP Local" :
+                           srv.address.startsWith("tcp://") ? "TCP" : "UDP"}
+                        </td>
                         <td className="py-2 px-3 sm:px-6 border-r border-gray-700/50">{srv.address || ""}</td>
                         <td className="py-2 px-3 sm:px-6 border-r border-gray-700/50">{srv.port || ""}</td>
                         <td className="py-2 px-3 sm:px-6 border-r border-gray-700/50">{Array.isArray(srv.domains) ? srv.domains.join(", ") : srv.domains}</td>

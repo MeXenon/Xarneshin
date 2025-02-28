@@ -84,10 +84,10 @@
         line-height: 1.7;
         border: 1px solid rgba(167, 139, 250, 0.3);
         border-radius: 10px;
-        height: 450px;
       }
       .CodeMirror-scroll {
         max-height: 450px;
+        min-height: 200px;
       }
       .cm-s-modern .CodeMirror-gutters {
         background-color: #1e293b;
@@ -209,7 +209,7 @@
         height: 20px;
       }
       .menu-icon.telegram {
-        filter: brightness(0) invert(1); /* Makes the Telegram icon white */
+        filter: brightness(0) invert(1);
       }
     </style>
   </head>
@@ -232,7 +232,6 @@
             <a href="/node/{{ node_id }}/reverse" class="block px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover">Reverse</a>
             <a href="/node/{{ node_id }}/advance" class="block px-4 py-3 rounded-lg text-cyan-400 bg-gray-700 border-l-4 border-cyan-400 font-bold neon-hover">Advance Settings & Editor</a>
             <a href="/nodes" class="block px-4 py-3 rounded-lg text-gray-300 hover:text-cyan-400 neon-hover">Back to Nodes</a>
-            <!-- "Support Us" Submenu -->
             <div class="relative py-2">
               <button
                 onclick="toggleSubmenu()"
@@ -448,7 +447,7 @@
                   <p class="text-sm text-gray-400 mb-4">Manually edit the configuration.</p>
                   <button v-if="!editorVisible" class="py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-white font-semibold neon-hover" @click="openEditor">Open Editor</button>
                   <button v-else class="py-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-semibold neon-hover" @click="closeEditor">Close Editor</button>
-                  <div v-if="editorVisible" class="mt-4">
+                  <div v-show="editorVisible" class="mt-4">
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                       <button class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="jumpTo('inbounds')">Inbounds</button>
                       <button class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-sm font-medium neon-hover" @click="jumpTo('outbounds')">Outbounds</button>
@@ -469,9 +468,7 @@
                         <button class="reset-btn" @click="resetEditorSection('balancers')">Reset Balancers</button>
                       </div>
                     </div>
-                    <div id="editorContainer" :class="{'hidden': !editorVisible}" class="relative rounded-lg overflow-hidden">
-                      <textarea id="codeEditorRoot" class="w-full h-full"></textarea>
-                    </div>
+                    <div id="editorContainer" class="relative rounded-lg overflow-hidden"></div>
                   </div>
                 </div>
               </div>
@@ -572,53 +569,75 @@
             }
           };
           document.addEventListener('click', this.handleOutsideClick);
+          this.$nextTick(() => {
+            this.initializeEditor();
+          });
         },
         beforeUnmount() {
           document.removeEventListener('click', this.handleOutsideClick);
+          if (this.codeEditor) {
+            const wrapper = this.codeEditor.getWrapperElement();
+            if (wrapper && wrapper.parentNode) {
+              wrapper.parentNode.removeChild(wrapper);
+            }
+            this.codeEditor = null;
+          }
         },
         watch: {
           enableEnhancedLog() { this.applyTogglesToCode(); },
-          logAccess() { if(this.enableEnhancedLog) this.applyTogglesToCode(); },
-          logError() { if(this.enableEnhancedLog) this.applyTogglesToCode(); },
+          logAccess() { if (this.enableEnhancedLog) this.applyTogglesToCode(); },
+          logError() { if (this.enableEnhancedLog) this.applyTogglesToCode(); },
           logLevel() { this.applyTogglesToCode(); },
-          logDns() { if(this.enableEnhancedLog) this.applyTogglesToCode(); },
-          logMaskAddress() { if(this.enableEnhancedLog) this.applyTogglesToCode(); },
+          logDns() { if (this.enableEnhancedLog) this.applyTogglesToCode(); },
+          logMaskAddress() { if (this.enableEnhancedLog) this.applyTogglesToCode(); },
           enablePolicy() { this.applyTogglesToCode(); },
-          policyLevel() { if(this.enablePolicy) this.applyTogglesToCode(); },
-          statsUserDownlink() { if(this.enablePolicy) this.applyTogglesToCode(); },
-          statsUserUplink() { if(this.enablePolicy) this.applyTogglesToCode(); },
-          statsInboundDownlink() { if(this.enablePolicy) this.applyTogglesToCode(); },
-          statsInboundUplink() { if(this.enablePolicy) this.applyTogglesToCode(); },
-          statsOutboundDownlink() { if(this.enablePolicy) this.applyTogglesToCode(); },
-          statsOutboundUplink() { if(this.enablePolicy) this.applyTogglesToCode(); }
+          policyLevel() { if (this.enablePolicy) this.applyTogglesToCode(); },
+          statsUserDownlink() { if (this.enablePolicy) this.applyTogglesToCode(); },
+          statsUserUplink() { if (this.enablePolicy) this.applyTogglesToCode(); },
+          statsInboundDownlink() { if (this.enablePolicy) this.applyTogglesToCode(); },
+          statsInboundUplink() { if (this.enablePolicy) this.applyTogglesToCode(); },
+          statsOutboundDownlink() { if (this.enablePolicy) this.applyTogglesToCode(); },
+          statsOutboundUplink() { if (this.enablePolicy) this.applyTogglesToCode(); }
         },
         methods: {
+          initializeEditor() {
+            const container = document.getElementById("editorContainer");
+            if (container && !this.codeEditor) {
+              this.codeEditor = CodeMirror(container, {
+                value: this.codeValue || '{}',
+                mode: "application/json",
+                theme: "modern",
+                lineNumbers: true,
+                lineWrapping: true,
+                gutters: ["CodeMirror-lint-markers"],
+                lint: {
+                  lint: function(text) {
+                    try {
+                      return CodeMirror.lint.json(text);
+                    } catch (e) {
+                      console.error("Linting error:", e);
+                      return [];
+                    }
+                  },
+                  options: { delay: 1000 }
+                },
+                readOnly: false
+              });
+              this.codeEditor.on("change", this.onEditorChange);
+            }
+          },
           openEditor() {
-            this.editorVisible = true;
-            this.$nextTick(() => {
-              const editorEl = document.getElementById("codeEditorRoot");
-              if (editorEl) {
-                this.codeEditor = CodeMirror.fromTextArea(editorEl, {
-                  value: this.codeValue,
-                  mode: "application/json",
-                  theme: "modern",
-                  lineNumbers: true,
-                  lineWrapping: true,
-                  gutters: ["CodeMirror-lint-markers"],
-                  lint: true,
-                  readOnly: false
-                });
-                this.codeEditor.setValue(this.codeValue);
-                this.codeEditor.on("change", this.onEditorChange);
-                this.codeEditor.refresh();
-              }
-            });
+            if (!this.editorVisible) {
+              this.editorVisible = true;
+              this.$nextTick(() => {
+                if (this.codeEditor) {
+                  this.codeEditor.setValue(this.codeValue);
+                  this.codeEditor.refresh();
+                }
+              });
+            }
           },
           closeEditor() {
-            if (this.codeEditor) {
-              this.codeEditor.toTextArea();
-              this.codeEditor = null;
-            }
             this.editorVisible = false;
             this.showResetDropdown = false;
           },
@@ -674,14 +693,14 @@
               console.warn("Cannot apply toggles: Invalid JSON");
               return;
             }
-            let logConfig = this.enableEnhancedLog ? {
+            const logConfig = this.enableEnhancedLog ? {
               access: this.logAccess,
               error: this.logError,
               loglevel: this.logLevel,
               dnsLog: this.logDns,
               maskAddress: this.logMaskAddress
             } : { loglevel: "warning" };
-            let policyConfig = this.enablePolicy ? {
+            const policyConfig = this.enablePolicy ? {
               levels: {
                 [this.policyLevel]: {
                   statsUserDownlink: this.statsUserDownlink,
@@ -695,13 +714,31 @@
                 statsOutboundUplink: this.statsOutboundUplink
               }
             } : null;
-            const newObj = { ...obj, log: logConfig };
+
+            // Construct new object with explicit order
+            const newObj = {};
+            if (obj.log) newObj.log = logConfig;
+            if (obj.inbounds) newObj.inbounds = obj.inbounds;
+            if (obj.outbounds) newObj.outbounds = obj.outbounds;
             if (policyConfig) newObj.policy = policyConfig;
+            else delete obj.policy; // Explicitly remove policy if disabled
+            if (obj.routing) newObj.routing = obj.routing;
+            if (obj.dns) newObj.dns = obj.dns;
+            if (obj.balancers) newObj.balancers = obj.balancers;
+            if (obj.reverse) newObj.reverse = obj.reverse;
+
             this.codeValue = JSON.stringify(newObj, null, 2);
             if (this.editorVisible && this.codeEditor) {
               const scrollInfo = this.codeEditor.getScrollInfo();
               const cursor = this.codeEditor.getCursor();
               this.codeEditor.setValue(this.codeValue);
+              const doc = this.codeEditor.getDoc();
+              const lastLine = doc.lineCount() - 1;
+              const lastCh = doc.getLine(lastLine).length;
+              cursor.line = Math.min(cursor.line, lastLine);
+              if (cursor.line === lastLine) {
+                cursor.ch = Math.min(cursor.ch, lastCh);
+              }
               this.codeEditor.scrollTo(scrollInfo.left, scrollInfo.top);
               this.codeEditor.setCursor(cursor);
             }

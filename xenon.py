@@ -225,6 +225,107 @@ def change_core(node_id):
 
 #################### end xray core changr
 ####################
+####################### Restart core section
+@app.route("/node/<int:node_id>/restart_cores", methods=["POST"])
+def restart_cores(node_id):
+    if "token" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    if not data or "cores" not in data:
+        return jsonify({"error": "No cores specified"}), 400
+
+    cores = data["cores"]
+    if not isinstance(cores, list) or 'xray' not in cores:
+        return jsonify({"error": "Only 'xray' core restart is supported"}), 400
+
+    token = session["token"]
+    results = {}
+
+    # Validate node and Xray presence
+    node_data = get_node(token, node_id)
+    if not node_data or "backends" not in node_data:
+        return jsonify({"error": "Failed to fetch node details"}), 500
+    if not any(backend["name"] == "xray" for backend in node_data["backends"]):
+        results["xray"] = {"status": "error", "message": "Xray core not found in node"}
+        return jsonify(results)
+
+    # Restart Xray only
+    url = f"{API_BASE_URL}/nodes/{node_id}/xray/config"
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Fetch current Xray config
+    try:
+        response = api_session.get(url, headers=headers)
+        if response.status_code != 200:
+            results["xray"] = {"status": "error", "message": f"Failed to fetch config (status: {response.status_code})"}
+            return jsonify(results)
+    except requests.RequestException as e:
+        results["xray"] = {"status": "error", "message": f"Fetch error: {str(e)}"}
+        return jsonify(results)
+
+    config_data = response.json()
+    if "config" not in config_data:
+        results["xray"] = {"status": "error", "message": "Config not found in response"}
+        return jsonify(results)
+
+    # Resubmit Xray config to restart
+    try:
+        put_response = api_session.put(
+            url,
+            headers=headers,
+            json={"config": config_data["config"], "format": 1}
+        )
+        if put_response.status_code == 200:
+            results["xray"] = {"status": "success"}
+        else:
+            results["xray"] = {"status": "error", "message": f"Failed to update config (status: {put_response.status_code})"}
+    except requests.RequestException as e:
+        results["xray"] = {"status": "error", "message": f"Update error: {str(e)}"}
+
+    return jsonify(results)
+
+@app.route("/restart_all_nodes_cores", methods=["POST"])
+def restart_all_nodes_cores():
+    if "token" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    token = session["token"]
+    nodes_data = get_nodes(token)
+    if not nodes_data or "items" not in nodes_data:
+        return jsonify({"error": "Failed to fetch nodes"}), 500
+
+    results = {}
+    for node in nodes_data["items"]:
+        node_id = node["id"]
+        node_results = {}
+        # Only process Xray core
+        if any(backend["name"] == "xray" for backend in node["backends"]):
+            url = f"{API_BASE_URL}/nodes/{node_id}/xray/config"
+            headers = {"Authorization": f"Bearer {token}"}
+            try:
+                response = api_session.get(url, headers=headers)
+                if response.status_code != 200:
+                    node_results["xray"] = {"status": "error", "message": f"Fetch failed (status: {response.status_code})"}
+                else:
+                    config_data = response.json()
+                    if "config" not in config_data:
+                        node_results["xray"] = {"status": "error", "message": "Config not found"}
+                    else:
+                        put_response = api_session.put(url, headers=headers, json={"config": config_data["config"], "format": 1})
+                        if put_response.status_code == 200:
+                            node_results["xray"] = {"status": "success"}
+                        else:
+                            node_results["xray"] = {"status": "error", "message": f"Update failed (status: {put_response.status_code})"}
+            except requests.RequestException as e:
+                node_results["xray"] = {"status": "error", "message": f"Error: {str(e)}"}
+        else:
+            node_results["xray"] = {"status": "skipped", "message": "Xray not present"}
+        results[node_id] = node_results
+
+    return jsonify(results)
+####################
+####################
 def get_xray_config(token, node_id):
     """
     Fetch the node's Xray config JSON from the backend API

@@ -1,3 +1,5 @@
+<a href="/README.md"><img src="https://flagicons.lipis.dev/flags/4x3/gb.svg" alt="English" width="20"/> English</a> | <a href="/README_FA.md"><img src="https://flagicons.lipis.dev/flags/4x3/ir.svg" alt="فارسی" width="20"/> فارسی</a>
+
 # Xarneshin - Xenon Xray Manager
 
 **Xarneshin** is a powerful, futuristic Flask-based web interface and CLI tool designed to manage Xray configurations seamlessly alongside the [Marzneshin](https://github.com/marzneshin/marzneshin) proxy management system. Built with a sleek, modern UI and packed with advanced features, Xarneshin empowers users to configure, monitor, and optimize Xray instances with ease.

@@ -55,6 +55,8 @@ git clone https://github.com/MeXenon/Xarneshin.git ~/Xenon.xray && cd ~/Xenon.xr
 
    Access the web interface at `http://<your-server-ip>:<flask-port>` (e.g., `http://192.168.1.100:42689`).
 
+**🔑NOTE: the Username and password of xarneshin is the same with marzneshin.**
+ 
 4. **(Optional) Enable HTTPS**  
    Use the CLI to configure HTTPS with your domain and certificates:
 

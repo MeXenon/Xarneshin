@@ -4,9 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Xarzneshin Core Manager - Nodes</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       body {
@@ -55,8 +53,10 @@
         ::-webkit-scrollbar {
           width: 6px;
         }
-        .table-container {
-          max-height: 500px;
+        .table-wrapper {
+          max-height: calc(100vh - 200px);
+          overflow-y: auto;
+          overflow-x: auto;
         }
       }
       ::-webkit-scrollbar-track {
@@ -69,7 +69,6 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #c4b5fd;
       }
-      /* Custom radio button styling */
       input[type="radio"] {
         appearance: none;
         width: 16px;
@@ -80,7 +79,7 @@
         cursor: pointer;
       }
       input[type="radio"]:checked {
-        background-color: #3b82f6; /* Blue dot */
+        background-color: #3b82f6;
         border-color: #3b82f6;
         box-shadow: inset 0 0 0 3px rgba(27, 38, 59, 0.7);
       }
@@ -137,38 +136,43 @@
             </div>
           {% endif %}
         {% endwith %}
-        <h2 class="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-cyan-400">All Nodes</h2>
+        <div class="flex justify-between items-center mb-4 sm:mb-6">
+          <h2 class="text-xl sm:text-2xl md:text-3xl font-bold text-cyan-400">All Nodes</h2>
+          <button id="restartAllNodesCoresBtn" onclick="showRestartAllConfirm()"
+                  class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm transition-colors neon-hover">
+            Restart All Xray Cores
+          </button>
+        </div>
 
         <!-- Desktop Table View -->
         <div class="hidden sm:block overflow-x-auto">
-          <div class="relative glass-effect rounded-lg shadow-xl overflow-hidden table-container">
-            <table class="min-w-[800px] w-full table-auto text-sm">
+          <div class="table-wrapper relative glass-effect rounded-lg shadow-xl">
+            <table class="min-w-[900px] w-full table-auto text-sm">
               <thead class="sticky top-0 z-10 bg-gradient-to-r from-indigo-900 via-purple-900 to-cyan-900 text-gray-100">
                 <tr>
                   <th class="px-4 sm:px-6 py-3 sm:py-4 text-left">Node</th>
                   <th class="px-4 sm:px-6 py-3 sm:py-4 text-left">Status</th>
-                  <th class="px-4 sm:px-6 py-3 sm:py-4 text-left">Cores / Versions</th>
-                  <th class="px-4 sm:px-6 py-3 sm:py-4 text-left">Actions</th>
+                  <th class="px-4 sm:px-6 py-3 sm:py-4 text-left">Core / Version</th>
+                  <th class="px-4 sm:px-6 py-3 sm:py-4 text-left">Xray Actions</th>
+                  <th class="px-4 sm:px-6 py-3 sm:py-4 text-left">Core Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-700/50">
                 {% for item in nodes["items"] %}
-                  {% set rowSpan = item["backends"]|length %}
+                  {% set xray_running = item["backends"]|selectattr("name", "equalto", "xray")|selectattr("running", "equalto", true)|list|length > 0 %}
                   {% for backend in item["backends"] %}
                     <tr class="hover:bg-gray-700/70 transition-colors">
-                      {% if loop.first %}
-                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-medium" rowspan="{{ rowSpan }}">
-                          {{ item["id"] }} - {{ item["name"] }}
-                        </td>
-                        <td class="px-4 sm:px-6 py-3 sm:py-4 font-medium" rowspan="{{ rowSpan }}">
-                          {% if item["status"] == "healthy" %}
-                            <span class="bg-green-600/80 text-white px-2 py-1 rounded-full text-xs">Healthy</span>
-                          {% else %}
-                            <span class="bg-red-600/80 text-white px-2 py-1 rounded-full text-xs">{{ item["status"] }}</span>
-                          {% endif %}
-                        </td>
-                      {% endif %}
-                      <td class="px-4 sm:px-6 py-3 sm:py-4 pr-4 sm:pr-24 relative">
+                      <td class="px-4 sm:px-6 py-3 sm:py-4 font-medium">
+                        {{ item["id"] }} - {{ item["name"] }}
+                      </td>
+                      <td class="px-4 sm:px-6 py-3 sm:py-4 font-medium">
+                        {% if item["status"] == "healthy" %}
+                          <span class="bg-green-600/80 text-white px-2 py-1 rounded-full text-xs">Healthy</span>
+                        {% else %}
+                          <span class="bg-red-600/80 text-white px-2 py-1 rounded-full text-xs">{{ item["status"] }}</span>
+                        {% endif %}
+                      </td>
+                      <td class="px-4 sm:px-6 py-3 sm:py-4">
                         <div>
                           <span class="block text-gray-200">{{ backend["name"] }}</span>
                           <span class="block text-xs text-gray-400 mt-1">
@@ -180,24 +184,30 @@
                             {% endif %}
                           </span>
                         </div>
+                      </td>
+                      <td class="px-4 sm:px-6 py-3 sm:py-4">
                         {% if backend["name"] == "xray" and backend["running"] %}
                           <a href="{{ url_for('overview', node_id=item['id']) }}"
-                             class="sm:absolute sm:right-4 top-1/2 transform -translate-y-1/2 bg-orange-500 hover:bg-orange-600 text-white px-2 sm:px-3 py-1 rounded text-xs transition-colors z-10 neon-hover">
+                             class="block bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-xs transition-colors neon-hover w-32 text-center">
                             Manage Xray
                           </a>
                         {% endif %}
                       </td>
-                      {% if loop.first %}
-                        <td class="px-4 sm:px-6 py-3 sm:py-4" rowspan="{{ rowSpan }}">
-                          {% if item["name"] == "local" %}
-                            <button id="changeCoreBtn-{{ item['id'] }}"
-                                    onclick="openChangeCoreModal({{ item['id'] }})"
-                                    class="bg-purple-600 hover:bg-purple-700 text-white px-2 sm:px-3 py-1 rounded text-xs transition-colors neon-hover">
-                              Change Xray Core
-                            </button>
-                          {% endif %}
-                        </td>
-                      {% endif %}
+                      <td class="px-4 sm:px-6 py-3 sm:py-4">
+                        {% if loop.first and item["name"] == "local" %}
+                          <button id="changeCoreBtn-{{ item['id'] }}"
+                                  onclick="openChangeCoreModal({{ item['id'] }})"
+                                  class="block bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs transition-colors neon-hover w-32">
+                            Change Xray Core
+                          </button>
+                        {% endif %}
+                        {% if backend["name"] == "xray" %}
+                          <button onclick="showRestartConfirm({{ item['id'] }})"
+                                  class="block {% if loop.first and item['name'] == 'local' %}mt-1.5{% endif %} bg-blue-400 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs transition-colors neon-hover w-32">
+                            Restart Xray
+                          </button>
+                        {% endif %}
+                      </td>
                     </tr>
                   {% endfor %}
                 {% endfor %}
@@ -220,7 +230,7 @@
               </div>
               <div class="space-y-2">
                 {% for backend in item["backends"] %}
-                  <div class="border-t border-gray-700/50 pt-2">
+                  <div class="border-t border-gray-700/50 pt-2 flex flex-col space-y-2">
                     <div>
                       <span class="block font-medium text-gray-200">{{ backend["name"] }}</span>
                       <span class="block text-xs text-gray-400">
@@ -232,22 +242,30 @@
                         {% endif %}
                       </span>
                     </div>
-                    {% if backend["name"] == "xray" and backend["running"] %}
-                      <a href="{{ url_for('overview', node_id=item['id']) }}"
-                         class="inline-block mt-1 bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-xs transition-colors neon-hover">
-                        Manage Xray
-                      </a>
-                    {% endif %}
                   </div>
                 {% endfor %}
               </div>
-              {% if item["name"] == "local" %}
-                <button id="changeCoreBtn-{{ item['id'] }}"
-                        onclick="openChangeCoreModal({{ item['id'] }})"
-                        class="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors neon-hover">
-                  Change Xray Core
-                </button>
-              {% endif %}
+              <div class="mt-2 flex flex-col gap-1.5">
+                {% if item["backends"]|selectattr("name", "equalto", "xray")|selectattr("running", "equalto", true)|list|length > 0 %}
+                  <a href="{{ url_for('overview', node_id=item['id']) }}"
+                     class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-sm transition-colors neon-hover w-full text-center">
+                    Manage Xray
+                  </a>
+                {% endif %}
+                {% if item["name"] == "local" %}
+                  <button id="changeCoreBtn-{{ item['id'] }}"
+                          onclick="openChangeCoreModal({{ item['id'] }})"
+                          class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-sm transition-colors neon-hover w-full">
+                    Change Xray Core
+                  </button>
+                {% endif %}
+                {% if item["backends"]|selectattr("name", "equalto", "xray")|list|length > 0 %}
+                  <button onclick="showRestartConfirm({{ item['id'] }})"
+                          class="bg-blue-400 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-sm transition-colors neon-hover w-full">
+                    Restart Xray
+                  </button>
+                {% endif %}
+              </div>
             </div>
           {% endfor %}
         </div>
@@ -276,7 +294,7 @@
           </div>
         </div>
 
-        <!-- Confirmation Modal -->
+        <!-- Confirmation Modal for Core Change -->
         <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
           <div class="glass-effect rounded-lg p-6 w-full max-w-md">
             <h3 class="text-lg font-bold text-cyan-400 mb-4">Confirm Core Change</h3>
@@ -284,6 +302,18 @@
             <div class="flex justify-end space-x-2">
               <button onclick="closeConfirmModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded neon-hover">No</button>
               <button onclick="startCoreChange()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded neon-hover">Yes</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Restart Confirmation Modal -->
+        <div id="restartConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+          <div class="glass-effect rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-bold text-cyan-400 mb-4" id="restartConfirmTitle">Confirm Restart</h3>
+            <p class="text-gray-200 mb-4" id="restartConfirmMessage"></p>
+            <div class="flex justify-end space-x-2">
+              <button onclick="closeRestartConfirm()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded neon-hover">No</button>
+              <button id="confirmRestartBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded neon-hover">Yes</button>
             </div>
           </div>
         </div>
@@ -302,7 +332,7 @@
         </div>
       </main>
 
-      <!-- Support Dropdown and Core Change Script -->
+      <!-- JavaScript -->
       <script>
         const supportToggle = document.getElementById('supportToggle');
         const supportDropdown = document.getElementById('supportDropdown');
@@ -318,6 +348,8 @@
         let currentNodeId = null;
         let selectedVersion = null;
         let versionListContent = null;
+        let restartNodeId = null;
+        let restartAction = null;
 
         function openChangeCoreModal(nodeId) {
           currentNodeId = nodeId;
@@ -351,7 +383,7 @@
                 };
                 versionList.appendChild(div);
               });
-              versionListContent = versionList.innerHTML; // Store the version list for "Back" functionality
+              versionListContent = versionList.innerHTML;
               document.getElementById('customVersionBtn').classList.remove('hidden');
               document.getElementById('changeCoreModal').classList.remove('hidden');
             })
@@ -405,11 +437,35 @@
           }
           document.getElementById('selectedVersion').textContent = selectedVersion;
           document.getElementById('confirmModal').classList.remove('hidden');
-          closeChangeCoreModal(false); // Don’t reset selection when moving to confirm
+          closeChangeCoreModal(false);
         }
 
         function closeConfirmModal() {
           document.getElementById('confirmModal').classList.add('hidden');
+        }
+
+        function showRestartConfirm(nodeId) {
+          restartNodeId = nodeId;
+          restartAction = 'single';
+          document.getElementById('restartConfirmTitle').textContent = 'Confirm Xray Restart';
+          document.getElementById('restartConfirmMessage').textContent = `Are you sure you want to restart Xray on node ${nodeId}?`;
+          document.getElementById('restartConfirmModal').classList.remove('hidden');
+          document.getElementById('confirmRestartBtn').onclick = () => restartCore(nodeId, 'xray');
+        }
+
+        function showRestartAllConfirm() {
+          restartNodeId = null;
+          restartAction = 'all';
+          document.getElementById('restartConfirmTitle').textContent = 'Confirm All Xray Restarts';
+          document.getElementById('restartConfirmMessage').textContent = 'Are you sure you want to restart Xray cores across all nodes? This may disrupt Xray services.';
+          document.getElementById('restartConfirmModal').classList.remove('hidden');
+          document.getElementById('confirmRestartBtn').onclick = restartAllXrayCores;
+        }
+
+        function closeRestartConfirm() {
+          document.getElementById('restartConfirmModal').classList.add('hidden');
+          restartNodeId = null;
+          restartAction = null;
         }
 
         function startCoreChange() {
@@ -442,12 +498,10 @@
                     return;
                   }
                   const chunk = decoder.decode(value, { stream: true });
-                  console.log('Received chunk:', chunk);
                   chunk.split('\n\n').forEach(event => {
                     if (event.startsWith('data: ')) {
                       try {
                         const data = JSON.parse(event.slice(6));
-                        console.log('Parsed data:', data);
                         const bar = document.getElementById('progressBar');
                         const percentage = document.getElementById('progressPercentage');
                         const message = document.getElementById('progressMessage');
@@ -458,7 +512,6 @@
                         }
                         message.textContent = data.message;
 
-                        // Handle completion, error, or specific "Download failed" case
                         if (data.done || data.status === 'success') {
                           setTimeout(() => {
                             document.getElementById('progressModal').classList.add('hidden');
@@ -473,13 +526,12 @@
                           }, 1000);
                         }
                       } catch (e) {
-                        console.error('JSON parse error:', e, 'Event:', event);
+                        console.error('JSON parse error:', e);
                       }
                     }
                   });
                   readStream();
                 }).catch(err => {
-                  console.error('Stream error:', err);
                   document.getElementById('progressModal').classList.add('hidden');
                   alert('Stream error: ' + err.message);
                 });
@@ -487,9 +539,72 @@
               readStream();
             })
             .catch(err => {
-              console.error('Fetch error:', err);
               document.getElementById('progressModal').classList.add('hidden');
               alert('Fetch error: ' + err.message);
+            });
+        }
+
+        // Restart Functions
+        function restartCore(nodeId, coreName) {
+          if (coreName !== 'xray') return; // Only allow Xray restarts
+          closeRestartConfirm();
+          fetch(`/node/${nodeId}/restart_cores`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cores: ['xray'] })
+          })
+            .then(response => response.json())
+            .then(data => {
+              if (data['xray'] && data['xray'].status === 'success') {
+                showNotification(`Successfully restarted Xray on node ${nodeId}`);
+                setTimeout(() => location.reload(), 2000);
+              } else {
+                alert(`Failed to restart Xray: ${data['xray'].message}`);
+              }
+            })
+            .catch(err => alert('Error restarting Xray: ' + err.message));
+        }
+
+        function restartAllXrayCores() {
+          closeRestartConfirm();
+          document.getElementById('restartAllNodesCoresBtn').disabled = true;
+          document.getElementById('restartAllNodesCoresBtn').textContent = 'Restarting...';
+          fetch('/restart_all_nodes_cores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          })
+            .then(response => response.json())
+            .then(data => {
+              document.getElementById('restartAllNodesCoresBtn').disabled = false;
+              document.getElementById('restartAllNodesCoresBtn').textContent = 'Restart All Xray Cores';
+              let allSuccess = true;
+              let messages = [];
+              for (const nodeId in data) {
+                let nodeMessage = `Node ${nodeId}: `;
+                if (data[nodeId]['xray']) {
+                  if (data[nodeId]['xray'].status === 'success') {
+                    nodeMessage += `Xray OK`;
+                  } else {
+                    allSuccess = false;
+                    nodeMessage += `Xray (${data[nodeId]['xray'].message})`;
+                  }
+                } else {
+                  nodeMessage += 'Xray not present';
+                }
+                messages.push(nodeMessage);
+              }
+              if (allSuccess) {
+                showNotification('All Xray cores across all nodes restarted successfully');
+                setTimeout(() => location.reload(), 2000);
+              } else {
+                alert(`Restart results:\n${messages.join('\n')}`);
+              }
+            })
+            .catch(err => {
+              document.getElementById('restartAllNodesCoresBtn').disabled = false;
+              document.getElementById('restartAllNodesCoresBtn').textContent = 'Restart All Xray Cores';
+              alert('Error restarting all Xray cores: ' + err.message);
             });
         }
 

@@ -19,6 +19,7 @@ ENV_FILE="/etc/opt/marzneshin/.env"
 SERVICE_FILE="/etc/systemd/system/xarneshin.service"
 CLI_PATH="/usr/local/bin/xarneshin"
 PORTS_FILE="$INSTALL_DIR/ports.json"
+LOG_FILE="/tmp/xarneshin_install.log"
 
 ###############################################################################
 #                            SPINNER FUNCTION                                #
@@ -28,11 +29,11 @@ spinner() {
   local spin='-\|/'
   local i=0
   while kill -0 "$pid" 2>/dev/null; do
-    i=$(( (i+1) %4 ))
-    printf "\r${CYAN}[Action]${NC} ${GREEN}Installing...${NC} ${spin:$i:1}"
+    i=$(( (i+1) % 4 ))
+    printf "\r${CYAN}[Action]${NC} ${GREEN}Installing...${NC} ${spin:$i:1} Please wait..."
     sleep 0.15
   done
-  printf "\r"
+  printf "\r\033[K" # Clear the line after spinner stops
 }
 
 ###############################################################################
@@ -58,20 +59,59 @@ elif [[ ! -d "$INSTALL_DIR" ]]; then
 fi
 
 ###############################################################################
-#           INSTALL PYTHON + DEPENDENCIES (WITH SPINNER HIDING OUTPUT)        #
+#           INSTALL PYTHON + DEPENDENCIES                                      #
 ###############################################################################
+echo -e "${CYAN}[Action]${NC} ${GREEN}Installing Python and dependencies...${NC}"
+echo "Installation logs will be saved to $LOG_FILE"
+
+# Step 1: Try minimal installation
 {
-  echo -ne "\r${CYAN}[Action]${NC} ${GREEN}Installing Python and dependencies...${NC}\n"
-  apt-get update -y >/dev/null 2>&1
-  apt-get install -y python3 python3-pip curl jq >/dev/null 2>&1
-  pip3 install flask requests cryptography websockets psutil >/dev/null 2>&1
+  echo -e "  - Attempting minimal installation..." >> "$LOG_FILE"
+  apt-get update -y >> "$LOG_FILE" 2>&1 || {
+    echo -e "${RED}Failed to update package lists. Check $LOG_FILE for details.${NC}"
+    exit 1
+  }
+  apt-get install -y python3 python3-pip curl jq >> "$LOG_FILE" 2>&1 || {
+    echo -e "${RED}Failed to install base packages (python3, pip3, curl, jq). Check $LOG_FILE for details.${NC}"
+    exit 1
+  }
+  pip3 install flask requests cryptography websockets psutil blinker >> "$LOG_FILE" 2>&1
 } &
 bg_pid=$!
 spinner "$bg_pid"
-wait "$bg_pid" || {
-  echo -e "${RED}Installation of dependencies failed.${NC}"
-  exit 1
-}
+wait "$bg_pid"
+
+if [[ $? -ne 0 ]]; then
+  echo -e "  - Minimal installation failed, attempting robust fallback..."
+  # Step 2: Robust fallback
+  {
+    echo -e "  - Starting robust fallback..." >> "$LOG_FILE"
+    apt-get update -y && apt-get upgrade -y >> "$LOG_FILE" 2>&1 || {
+      echo -e "${RED}Failed to update/upgrade system packages in fallback. Check $LOG_FILE.${NC}"
+      exit 1
+    }
+    apt-get install -y python3-pip python3-dev python3-venv build-essential libssl-dev libffi-dev python3-setuptools >> "$LOG_FILE" 2>&1 || {
+      echo -e "${RED}Failed to install development packages in fallback. Check $LOG_FILE.${NC}"
+      exit 1
+    }
+    apt-get purge -y python3-blinker >> "$LOG_FILE" 2>&1 || {
+      echo -e "${YELLOW}Warning: Could not purge python3-blinker, continuing anyway...${NC}" | tee -a "$LOG_FILE"
+    }
+    pip3 install --break-system-packages flask requests cryptography websockets psutil blinker >> "$LOG_FILE" 2>&1 || {
+      echo -e "${RED}Failed to install Python dependencies even with robust fallback. Check $LOG_FILE for details.${NC}"
+      exit 1
+    }
+  } &
+  bg_pid=$!
+  spinner "$bg_pid"
+  wait "$bg_pid"
+  if [[ $? -eq 0 ]]; then
+    echo -e "  - Successfully installed dependencies using robust fallback method."
+  fi
+else
+  echo -e "  - Successfully installed dependencies with minimal method."
+fi
+
 echo -e "  - Done installing dependencies."
 
 ###############################################################################
@@ -644,3 +684,4 @@ printf "  ${BLUE}Flask port${NC}:      $flask_port\n"
 printf "  ${BLUE}Global IPv4${NC}:     $ipv4\n"
 printf "  ${BLUE}Access URL${NC}:      ${GREEN}http://$ipv4:$flask_port${NC}\n"
 echo -e "  ${YELLOW}Note:${NC} For secure access (recommended), enable HTTPS using '${GREEN}xarneshin${NC}' CLI (option 7) with your domain and certificates.\n"
+echo -e "  ${YELLOW}Installation logs:${NC} Check $LOG_FILE if you encountered issues during installation.\n"

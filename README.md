@@ -1,4 +1,16 @@
 <a href="/README.md"><img src="https://flagicons.lipis.dev/flags/4x3/gb.svg" alt="English" width="20"/> English</a> | <a href="/README_FA.md"><img src="https://flagicons.lipis.dev/flags/4x3/ir.svg" alt="فارسی" width="20"/> فارسی</a>
+<br><br>
+
+<div style="display: flex; justify-content: center; align-items: center; gap: 10px; max-width: 100%;">
+    <img src="https://github.com/MeXenon/Xarneshin/blob/main/Preview/main.jpg" alt="Main Preview" style="width: 350px; height: auto; border-radius: 10px;">
+    <img src="https://github.com/MeXenon/Xarneshin/blob/main/Preview/other.jpg" alt="Other Preview" style="width: 350px; height: auto; border-radius: 10px;">
+</div>
+
+<br>
+
+<div style="display: flex; justify-content: center;">
+    <img src="https://github.com/MeXenon/Xarneshin/blob/main/Preview/CLI.png" alt="CLI Preview" style="width: 400px; height: auto; border-radius: 10px;">
+</div>
 
 # Xarneshin - Xenon Xray Manager
 
